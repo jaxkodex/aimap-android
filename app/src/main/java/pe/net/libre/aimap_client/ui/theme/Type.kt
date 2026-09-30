@@ -1,34 +1,26 @@
 package pe.net.libre.aimap_client.ui.theme
 
-import androidx.compose.material3.Typography
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
+import pe.net.libre.aimap_client.R
 
-// Set of Material typography styles to start with
-val Typography = Typography(
-    bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.5.sp
-    )
-    /* Other default text styles to override
-    titleLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp
-    ),
-    labelSmall = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    )
-    */
+private val Weights = listOf(400, 600, 700, 800)
+
+@OptIn(ExperimentalTextApi::class)
+private fun variable(res: Int) = FontFamily(
+    Weights.map { w ->
+        Font(res, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w)))
+    }
 )
+
+/** Callsigns, titles and labels. */
+val CallFont = variable(R.font.sofia_sans_condensed)
+
+/** Subjects and sender summaries. */
+val BodyFont = variable(R.font.sofia_sans)
+
+/** Every count, age and time (the Printed Data Rule). */
+val DataFont = variable(R.font.azeret_mono)
