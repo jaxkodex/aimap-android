@@ -29,10 +29,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pe.net.libre.aimap_client.settings.HomeLayout
 import pe.net.libre.aimap_client.ui.theme.AimapTheme
 import pe.net.libre.aimap_client.ui.theme.BodyFont
 import pe.net.libre.aimap_client.ui.theme.CallFont
@@ -40,7 +43,13 @@ import pe.net.libre.aimap_client.ui.theme.CallFont
 /** The Bay once signed in: the live home, or its first load, or why it failed. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeRoute(state: AppState.SignedIn, onRefresh: () -> Unit, onSignOut: () -> Unit) {
+fun HomeRoute(
+    state: AppState.SignedIn,
+    layout: HomeLayout,
+    onLayout: (HomeLayout) -> Unit,
+    onRefresh: () -> Unit,
+    onSignOut: () -> Unit,
+) {
     var account by rememberSaveable { mutableStateOf(false) }
     val home = state.home
     if (home == null || state.forbidden) {
@@ -54,7 +63,11 @@ fun HomeRoute(state: AppState.SignedIn, onRefresh: () -> Unit, onSignOut: () -> 
         )
     } else {
         PullToRefreshBox(isRefreshing = state.loading, onRefresh = onRefresh) {
-            HomeScreen(home, onAvatar = { account = true })
+            // The network side of opening and acting on a strip is not wired yet.
+            when (layout) {
+                HomeLayout.V4 -> HomeScreen(home, onOpen = {}, onAction = { _, _ -> }, onAvatar = { account = true })
+                HomeLayout.V5 -> HomeV5Screen(home, onAvatar = { account = true })
+            }
             state.error?.let { ErrorBar(it, onRefresh) }
         }
     }
@@ -62,10 +75,47 @@ fun HomeRoute(state: AppState.SignedIn, onRefresh: () -> Unit, onSignOut: () -> 
         AlertDialog(
             onDismissRequest = { account = false },
             title = { Text(state.email) },
-            text = { Text("Signed in to aimap with this Google account.") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Signed in to aimap with this Google account.")
+                    LayoutChoice(layout, onLayout)
+                }
+            },
             confirmButton = { TextButton({ account = false; onSignOut() }) { Text("Sign out") } },
             dismissButton = { TextButton({ account = false }) { Text("Close") } },
         )
+    }
+}
+
+/** Which Home to draw. The choice sticks across restarts. */
+@Composable
+private fun LayoutChoice(layout: HomeLayout, onLayout: (HomeLayout) -> Unit) {
+    val c = AimapTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Home layout", style = TextStyle(fontFamily = CallFont, fontWeight = FontWeight(700), fontSize = 16.sp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            HomeLayout.entries.forEach { option ->
+                val chosen = option == layout
+                Box(
+                    Modifier.heightIn(min = 44.dp)
+                        .background(if (chosen) c.holderYellow else c.rail, RoundedCornerShape(2.dp))
+                        .clickable(role = Role.RadioButton) { onLayout(option) }
+                        .semantics { selected = chosen }
+                        .padding(horizontal = 18.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        option.label,
+                        style = TextStyle(
+                            fontFamily = CallFont,
+                            fontWeight = FontWeight(700),
+                            fontSize = 16.sp,
+                            color = if (chosen) c.ink else c.onConsole,
+                        ),
+                    )
+                }
+            }
+        }
     }
 }
 

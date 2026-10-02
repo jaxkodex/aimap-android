@@ -40,6 +40,12 @@ The API only answers Firebase users whose email is in its
 ./gradlew :app:installDebug        # build and install on a connected device
 ```
 
+## Home layout
+
+The Bay draws one of two layouts. v4 is the rack of strips and the default. v5 is the
+queue layout, still a placeholder. Tap the avatar and pick one under "Home layout"; the
+app writes the choice to a Jetpack DataStore preference, so it survives a restart.
+
 ## Fonts
 
 Sofia Sans, Sofia Sans Condensed and Azeret Mono are under the SIL Open Font
