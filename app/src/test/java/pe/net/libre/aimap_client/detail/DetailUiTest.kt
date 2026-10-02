@@ -22,9 +22,11 @@ class DetailUiTest {
         needsReview: Boolean = false,
         subject: String? = "Interview: Senior Data Engineer",
         state: MessageState? = null,
+        profile: String? = null,
     ) = Message(
         messageId = 41,
         account = "personal@example.com",
+        profile = profile,
         sender = "Priya Nair",
         fromEmail = "priya@northwind.example",
         subject = subject,
@@ -47,6 +49,12 @@ class DetailUiTest {
         assertEquals("4h", ui.top)
         assertTrue(ui.topIsAge)
         assertEquals("10:07", ui.bottom)
+    }
+
+    @Test
+    fun the_account_label_is_the_profile_and_falls_back_to_the_address() {
+        assertEquals("work", message("reply", profile = "work").toUi(now).account)
+        assertEquals("personal", message("reply").toUi(now).account)
     }
 
     @Test

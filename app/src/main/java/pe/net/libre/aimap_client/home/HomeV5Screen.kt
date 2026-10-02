@@ -112,7 +112,8 @@ fun HomeV5Screen(
                 )
             }
         }
-        ArchiveDock(ui.archiveCount, onArchiveAll)
+        // Nothing can go, so there is nothing to hold.
+        if (ui.archiveCount > 0) ArchiveDock(ui.archiveCount, onArchiveAll)
         TabBar()
     }
 }

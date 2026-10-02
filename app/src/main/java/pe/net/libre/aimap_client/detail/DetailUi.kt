@@ -83,7 +83,7 @@ private val Words = mapOf(
 fun Message.toUi(now: ZonedDateTime): DetailUi {
     val bucket = labels?.actionBucket
     val bay = bay(bucket)
-    val label = account.substringBefore('@')
+    val label = profile ?: account.substringBefore('@')
     return DetailUi(
         messageId = messageId,
         bay = bay,

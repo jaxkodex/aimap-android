@@ -7,6 +7,8 @@ import java.time.Instant
 data class Message(
     val messageId: Long,
     val account: String,
+    /** The account's profile name ("work"), the label Home cards use. Null from older services. */
+    val profile: String? = null,
     val sender: String,
     val fromEmail: String?,
     val subject: String?,
@@ -68,6 +70,7 @@ fun parseMessage(json: String): Message {
     return Message(
         messageId = o.getLong("message_id"),
         account = o.getString("account"),
+        profile = o.string("profile"),
         sender = o.string("sender") ?: "(unknown)",
         fromEmail = o.string("from_email"),
         subject = o.string("subject"),

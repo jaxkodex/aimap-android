@@ -11,7 +11,7 @@ class MessageJsonTest {
     // Shaped like a real GET /messages/{id} response; all content is synthetic.
     private val message = """
         {
-          "message_id": 41, "account": "me@example.com", "rfc822_message_id": "<a@northwind.example>",
+          "message_id": 41, "account": "me@example.com", "profile": "work", "rfc822_message_id": "<a@northwind.example>",
           "from_email": "priya@northwind.example", "sender": "Priya Nair",
           "subject": "Interview: Senior Data Engineer", "sent_at": "2026-09-29T10:12:00+00:00",
           "in_reply_to": null, "bulk": false, "unread": true, "flagged": false,
@@ -28,6 +28,7 @@ class MessageJsonTest {
         val m = parseMessage(message)
         assertEquals(41L, m.messageId)
         assertEquals("Priya Nair", m.sender)
+        assertEquals("work", m.profile)
         assertEquals("priya@northwind.example", m.fromEmail)
         assertEquals(Instant.parse("2026-09-29T10:12:00Z"), m.sentAt)
         assertTrue(m.unread)
@@ -59,6 +60,7 @@ class MessageJsonTest {
         assertEquals("(unknown)", m.sender)
         assertEquals(emptyList<Mailbox>(), m.mailboxes)
         assertFalse(m.unread)
+        assertNull(m.profile)
     }
 
     @Test
