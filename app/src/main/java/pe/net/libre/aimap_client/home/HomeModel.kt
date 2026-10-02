@@ -1,5 +1,6 @@
 package pe.net.libre.aimap_client.home
 
+import pe.net.libre.aimap_client.api.MessageState
 import java.time.Instant
 
 /** The body of `GET /home` (see aimap-service `src/aimap/home.py`). */
@@ -16,6 +17,8 @@ data class Brief(
     val waiting: Int,
     val sorted: Int,
     val unclassified: Int,
+    /** Messages marked handled since local midnight. */
+    val handledToday: Int = 0,
     val text: String,
     val sortedAt: Instant?,
     val byHour: List<HourCount>,
@@ -47,6 +50,8 @@ data class Card(
     val reasons: List<String>,
     /** Only set on cards in [Home.waiting]. */
     val waitingSince: Instant? = null,
+    /** aimap's own state: null or [MessageState.Later]. A handled message is not on Home. */
+    val state: MessageState? = null,
 )
 
 data class SortedGroup(

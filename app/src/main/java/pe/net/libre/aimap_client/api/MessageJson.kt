@@ -49,6 +49,19 @@ enum class MessageState(val wire: String) {
     }
 }
 
+/** The answer to `POST /messages/{id}/actions`: what the message's state is now. */
+data class ActionState(val messageId: Long, val state: MessageState?, val changedAt: Instant?)
+
+/** Parses `POST /messages/{id}/actions`. Undo answers with both fields null. */
+fun parseAction(json: String): ActionState {
+    val o = JSONObject(json)
+    return ActionState(
+        messageId = o.getLong("message_id"),
+        state = MessageState.of(o.string("state")),
+        changedAt = o.instant("changed_at"),
+    )
+}
+
 /** Parses `GET /messages/{id}`. */
 fun parseMessage(json: String): Message {
     val o = JSONObject(json)

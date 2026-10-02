@@ -27,6 +27,7 @@ fun parseHome(json: String): Home {
             waiting = b.getInt("waiting"),
             sorted = b.getInt("sorted"),
             unclassified = b.getInt("unclassified"),
+            handledToday = b.optInt("handled_today"),
             text = b.getString("text"),
             sortedAt = b.instant("sorted_at"),
             byHour = b.optJSONArray("by_hour").objects().map {
@@ -73,6 +74,7 @@ private fun card(o: JSONObject) = Card(
     needsReview = o.optBoolean("needs_review"),
     reasons = o.optJSONArray("reasons").strings(),
     waitingSince = o.instant("waiting_since"),
+    state = MessageState.of(o.string("state")),
 )
 
 internal fun JSONArray?.objects(): List<JSONObject> = if (this == null) emptyList() else List(length()) { getJSONObject(it) }
