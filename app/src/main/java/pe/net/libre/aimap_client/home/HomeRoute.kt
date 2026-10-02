@@ -74,7 +74,7 @@ fun HomeRoute(
             // Acting on a strip is not wired to the API yet.
             when (layout) {
                 HomeLayout.V4 -> HomeScreen(home, onOpen = onOpenMessage, onAction = { _, _ -> }, onAvatar = { account = true })
-                HomeLayout.V5 -> HomeV5Screen(home, onAvatar = { account = true })
+                HomeLayout.V5 -> HomeV5Screen(home, onOpen = onOpenMessage, onAction = { _, _ -> }, onAvatar = { account = true })
             }
             state.error?.let { ErrorBar(it, onRefresh) }
         }

@@ -48,8 +48,10 @@ The API only answers Firebase users whose email is in its
 ## Home layout
 
 The Bay draws one of two layouts. v4 is the rack of strips and the default. v5 is the
-queue layout, still a placeholder. Tap the avatar and pick one under "Home layout"; the
-app writes the choice to a Jetpack DataStore preference, so it survives a restart.
+queue: one line of work, the message in hand opened out with its keys, everything else
+waiting in order, and the Can go piles as the last step. Tap the avatar and pick one under
+"Home layout"; the app writes the choice to a Jetpack DataStore preference, so it survives
+a restart.
 
 ## Fonts
 

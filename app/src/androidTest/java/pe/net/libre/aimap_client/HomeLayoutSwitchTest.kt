@@ -55,7 +55,7 @@ class HomeLayoutSwitchTest {
         }
 
         pick("v5")
-        rule.onNodeWithText("Queue layout coming next").assertExists()
+        rule.onNodeWithText("5 to work, then clear 28").assertExists()
         assertEquals(HomeLayout.V5, runBlocking { store.layout.first() })
 
         pick("v4")

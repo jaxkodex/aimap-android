@@ -26,6 +26,13 @@ object Lucide {
         "m9 12 2 2 4-4",
     )
     val ChevronDown = lucide("chevron-down", "m6 9 6 6 6-6")
+    val ChevronRight = lucide("chevron-right", "m9 18 6-6-6-6")
+    val MailOpen = lucide(
+        "mail-open",
+        "M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0z",
+        "m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10",
+    )
+    val SkipForward = lucide("skip-forward", "M5 4 15 12 5 20z", "M19 5v14")
     val ChevronUp = lucide("chevron-up", "m18 15-6-6-6 6")
     val Loader = lucide(
         "loader",

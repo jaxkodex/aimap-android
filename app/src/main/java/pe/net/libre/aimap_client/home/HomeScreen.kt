@@ -92,8 +92,8 @@ import pe.net.libre.aimap_client.ui.theme.CallFont
 import pe.net.libre.aimap_client.ui.theme.DataFont
 import kotlin.math.roundToInt
 
-private val Plate = RoundedCornerShape(2.dp)
-private val Gutter = 20.dp
+internal val Plate = RoundedCornerShape(2.dp)
+internal val Gutter = 20.dp
 
 /** The seam between two strips in a rack, and between two plates in the bar. */
 private val Seam = 1.dp
@@ -203,7 +203,7 @@ internal fun ConsoleHeader(h: HeaderUi, onAvatar: () -> Unit) {
 }
 
 @Composable
-private fun holder(bay: Bay) = AimapTheme.colors.let {
+internal fun holder(bay: Bay) = AimapTheme.colors.let {
     when (bay) {
         Bay.NeedsYou -> it.holderYellow
         Bay.Waiting -> it.holderBlue
@@ -311,9 +311,10 @@ private fun Traffic(t: TrafficUi, scrubHour: Int?, onScrub: (Int?) -> Unit) {
     }
 }
 
+/** A section head over its rack: the bay's chip, if it has one, then the title and its note. */
 @Composable
-private fun BaySection(
-    bay: Bay, title: String, note: String, top: Dp, bottom: Dp, gap: Dp = 8.dp,
+internal fun BaySection(
+    bay: Bay?, title: String, note: String, top: Dp, bottom: Dp, gap: Dp = 8.dp,
     content: @Composable () -> Unit,
 ) {
     val c = AimapTheme.colors
@@ -326,7 +327,7 @@ private fun BaySection(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(14.dp).background(holder(bay), Plate))
+            if (bay != null) Box(Modifier.size(14.dp).background(holder(bay), Plate))
             Text(title, style = style(CallFont, 22, 800, c.onConsole))
             Box(Modifier.weight(1f).height(1.dp).background(c.rail))
             Text(note, style = style(CallFont, 14, 600, c.onConsoleMuted))
@@ -341,7 +342,7 @@ private fun BaySection(
  * With one child there is nothing to split, so it just sits at the start.
  */
 @Composable
-private fun SplitRow(modifier: Modifier, gap: Dp, content: @Composable () -> Unit) {
+internal fun SplitRow(modifier: Modifier, gap: Dp, content: @Composable () -> Unit) {
     Layout(content, modifier) { measurables, constraints ->
         val width = constraints.maxWidth
         // Free height: a key keeps its touch target even when the strip is measured to fit.
@@ -400,7 +401,7 @@ private fun WrapRow(gap: Dp, content: @Composable () -> Unit) {
 
 /** One rack per bay: strips edge to edge over a rail-coloured seam, rounded only outside. */
 @Composable
-private fun <T> Rack(items: List<T>, row: @Composable (T) -> Unit) {
+internal fun <T> Rack(items: List<T>, row: @Composable (T) -> Unit) {
     val c = AimapTheme.colors
     Column(Modifier.fillMaxWidth().clip(Plate)) {
         items.forEachIndexed { i, item ->
@@ -469,7 +470,7 @@ private val GreasePath = PathParser()
 
 /** The agent's urgency pencil: an open hand-drawn loop with an ink keyline. */
 @Composable
-private fun Modifier.greaseRing(width: Dp): Modifier {
+internal fun Modifier.greaseRing(width: Dp): Modifier {
     val c = AimapTheme.colors
     return drawWithContent {
         drawContent()
@@ -610,7 +611,7 @@ private fun DrawScope.dashedOutline(color: Color) {
 
 /** Mail the agent has not sorted yet. Always visible, never hidden. */
 @Composable
-private fun UnsortedSlot(count: Int) {
+internal fun UnsortedSlot(count: Int) {
     val c = AimapTheme.colors
     Row(
         Modifier.fillMaxWidth().heightIn(min = 52.dp).drawBehind { dashedOutline(c.onConsoleMuted) }
@@ -629,7 +630,7 @@ private fun UnsortedSlot(count: Int) {
 
 /** Hold the bar for about 600 ms to archive every pile. Archived, never deleted. */
 @Composable
-private fun ArchiveDock(count: Int, onArchiveAll: () -> Unit) {
+internal fun ArchiveDock(count: Int, onArchiveAll: () -> Unit) {
     val c = AimapTheme.colors
     val haptics = LocalHapticFeedback.current
     val progress = remember { Animatable(0f) }

@@ -9,7 +9,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/** Which Home the Bay draws. V5 is the queue layout, still a placeholder. */
+/** Which Home the Bay draws. V4 is the rack of strips, V5 the queue. */
 enum class HomeLayout(val label: String) {
     V4("v4"),
     V5("v5"),

@@ -59,6 +59,8 @@ data class StripUi(
     val subject: String,
     val reason: String?,
     val moreReasons: Int,
+    /** Every reason the agent stored, in the order it gave them. */
+    val reasons: List<String>,
     /** needs_review: the strip is cocked out of line. */
     val cocked: Boolean,
     val keys: List<StripKey>,
@@ -143,6 +145,7 @@ private fun strip(c: Card, bay: Bay, now: ZonedDateTime): StripUi {
         subject = c.subject ?: "(no subject)",
         reason = if (c.needsReview) "Unsure: does this need a reply?" else c.reasons.firstOrNull(),
         moreReasons = if (c.needsReview) 0 else (c.reasons.size - 1).coerceAtLeast(0),
+        reasons = c.reasons,
         cocked = c.needsReview,
         keys = keys(c, bay),
         hourToday = sent?.takeIf { it.toLocalDate() == now.toLocalDate() }?.hour,
