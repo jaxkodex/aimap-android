@@ -55,4 +55,8 @@ object SampleMessage {
     ).joinToString("\n")
 
     val read = Read.Ready(message.toUi(SampleHome.now), BodyState.Text(body))
+
+    /** The same letter under another message's number, so the sample Bay can open any of its cards. */
+    fun read(messageId: Long): Read.Ready =
+        if (messageId == ID) read else Read.Ready(message.copy(messageId = messageId).toUi(SampleHome.now), BodyState.Text(body))
 }

@@ -1,5 +1,6 @@
 package pe.net.libre.aimap_client.home
 
+import pe.net.libre.aimap_client.api.MessageState
 import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
@@ -10,8 +11,12 @@ import java.util.Locale
 /** The three bays, ranked by attention. Each owns one holder colour. */
 enum class Bay { NeedsYou, Waiting, CanGo }
 
-/** What a key on a strip asks the app to do with that message. */
-enum class HomeAction { Handled, Later, Undo }
+/** What a key asks the app to do with a message. [wire] is the word `POST /messages/{id}/actions` takes. */
+enum class HomeAction(val wire: String) {
+    Handled("handled"),
+    Later("later"),
+    Undo("undo"),
+}
 
 /** The labelled keys a strip can carry. Only [Handled], [ItWasMe] and [Reply] are wired. */
 enum class StripKey { Handled, ItWasMe, Reply, NeedsReply, CanGo }
@@ -61,6 +66,8 @@ data class StripUi(
     val moreReasons: Int,
     /** needs_review: the strip is cocked out of line. */
     val cocked: Boolean,
+    /** Pushed to later: it sits at the end of its rack until it is handled. */
+    val later: Boolean,
     val keys: List<StripKey>,
     /** Hour of today it arrived, for the traffic scrub; null if not today. */
     val hourToday: Int?,
@@ -144,6 +151,7 @@ private fun strip(c: Card, bay: Bay, now: ZonedDateTime): StripUi {
         reason = if (c.needsReview) "Unsure: does this need a reply?" else c.reasons.firstOrNull(),
         moreReasons = if (c.needsReview) 0 else (c.reasons.size - 1).coerceAtLeast(0),
         cocked = c.needsReview,
+        later = c.state == MessageState.Later,
         keys = keys(c, bay),
         hourToday = sent?.takeIf { it.toLocalDate() == now.toLocalDate() }?.hour,
     )

@@ -34,14 +34,22 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
                 when (val s = state) {
                     AppState.Starting -> Box(Modifier.fillMaxSize().background(AimapTheme.colors.console))
-                    is AppState.SignedOut -> SignInScreen(s.busy, s.error) { model.signIn(this) }
+                    is AppState.SignedOut -> SignInScreen(
+                        busy = s.busy,
+                        error = s.error,
+                        // Debug only: the Bay on sample data, for when no account can sign in.
+                        onSample = if (BuildConfig.DEBUG) model::openSample else null,
+                        onSignIn = { model.signIn(this) },
+                    )
                     is AppState.SignedIn -> SignedInApp(
                         state = s,
                         api = model.api,
                         layout = layout,
                         onLayout = { chosen -> scope.launch { layouts.set(chosen) } },
-                        onRefresh = model::refresh,
+                        onRefresh = { model.refresh() },
                         onSignOut = { model.signOut(this) },
+                        onAction = model::act,
+                        onDismissError = model::dismissActionError,
                     )
                 }
             }

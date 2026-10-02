@@ -25,9 +25,12 @@ import pe.net.libre.aimap_client.ui.theme.AimapTheme
 import pe.net.libre.aimap_client.ui.theme.BodyFont
 import pe.net.libre.aimap_client.ui.theme.CallFont
 
-/** The console with one amber plate: sign in with Google. */
+/**
+ * The console with one amber plate: sign in with Google. [onSample] is set in debug builds only,
+ * and opens the Bay on sample data when no account can sign in.
+ */
 @Composable
-fun SignInScreen(busy: Boolean, error: String?, onSignIn: () -> Unit) {
+fun SignInScreen(busy: Boolean, error: String?, onSample: (() -> Unit)? = null, onSignIn: () -> Unit) {
     val c = AimapTheme.colors
     Box(Modifier.fillMaxSize().background(c.console).safeDrawingPadding().padding(horizontal = 20.dp)) {
         Column(Modifier.align(Alignment.Center).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -48,6 +51,18 @@ fun SignInScreen(busy: Boolean, error: String?, onSignIn: () -> Unit) {
                 )
             }
             error?.let { Text(it, style = TextStyle(fontFamily = BodyFont, fontSize = 14.sp, color = c.onConsole)) }
+            onSample?.let { open ->
+                Box(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .clickable(role = Role.Button, onClickLabel = "Open the sample bay", onClick = open),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "Open the sample bay",
+                        style = TextStyle(fontFamily = CallFont, fontWeight = FontWeight(700), fontSize = 16.sp, color = c.onConsoleMuted),
+                    )
+                }
+            }
         }
     }
 }

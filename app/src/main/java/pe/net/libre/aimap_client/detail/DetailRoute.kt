@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import pe.net.libre.aimap_client.BuildConfig
 import pe.net.libre.aimap_client.api.AimapApi
 import pe.net.libre.aimap_client.api.ApiException
+import pe.net.libre.aimap_client.home.HomeAction
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -23,10 +24,13 @@ fun DetailRoute(
     messageId: Long,
     api: AimapApi,
     onBack: () -> Unit,
-    onAction: (Long, DetailAction) -> Unit = { _, _ -> },
+    /** Debug only: read the sample message whatever the id, because there is no API to call. */
+    sample: Boolean = false,
+    onAction: (Long, HomeAction) -> Unit = { _, _ -> },
 ) {
     val scope = rememberCoroutineScope()
     var state by remember(messageId) { mutableStateOf<Read>(Read.Loading) }
+    val sampled = BuildConfig.DEBUG && (sample || messageId == SampleMessage.ID)
 
     val loadBody: () -> Unit = {
         scope.launch {
@@ -38,13 +42,9 @@ fun DetailRoute(
     val load: () -> Unit = {
         scope.launch {
             state = Read.Loading
-            state = if (BuildConfig.DEBUG && messageId == SampleMessage.ID) {
-                // The sample message never leaves the app, so it needs no call.
-                SampleMessage.read
-            } else {
-                fetchMessage(api, messageId)
-            }
-            if (state is Read.Ready) loadBody()
+            // The sample message never leaves the app, so it needs no call, body included.
+            state = if (sampled) SampleMessage.read(messageId) else fetchMessage(api, messageId)
+            if (state is Read.Ready && !sampled) loadBody()
         }
     }
 

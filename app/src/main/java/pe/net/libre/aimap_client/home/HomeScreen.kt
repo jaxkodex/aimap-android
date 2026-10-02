@@ -494,6 +494,8 @@ private fun StripBody(
     Column(modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp), Alignment.CenterVertically) {
             Text(s.sender, Modifier.weight(1f), style = style(CallFont, 20, 800, c.ink))
+            // Pushed to later: the strip sits at the end of its rack and says why.
+            if (s.later) Text("LATER", style = style(DataFont, 10, 700, c.inkMuted), softWrap = false)
             Text(s.account, style = style(DataFont, 11, color = c.inkMuted))
         }
         Text(s.subject, style = style(BodyFont, 15, color = c.ink, lineHeight = 1.22f))
