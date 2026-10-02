@@ -8,9 +8,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 
-/** The lucide icons the home design uses (ISC licence), as 24x24 2px strokes. Tint when drawing. */
+/** The lucide icons the designs use (ISC licence), as 24x24 2px strokes. Tint when drawing. */
 object Lucide {
     val Check = lucide("check", "M20 6 9 17l-5-5")
+    val ArrowLeft = lucide("arrow-left", "m12 19-7-7 7-7", "M19 12H5")
+    val Clock = lucide("clock", "M12 6v6l4 2", "M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0")
     val Reply = lucide("reply", "M9 17 4 12l5-5", "M20 18v-2a4 4 0 0 0-4-4H4")
     val Archive = lucide(
         "archive",
@@ -19,6 +21,7 @@ object Lucide {
         "M10 12h4",
     )
     val ChevronDown = lucide("chevron-down", "m6 9 6 6 6-6")
+    val ChevronUp = lucide("chevron-up", "m18 15-6-6-6 6")
     val Loader = lucide(
         "loader",
         "M12 2v4", "m16.2 7.8 2.9-2.9", "M18 12h4", "m16.2 16.2 2.9 2.9",
