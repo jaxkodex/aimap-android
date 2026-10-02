@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pe.net.libre.aimap_client.auth.SignInScreen
 import pe.net.libre.aimap_client.home.AppState
-import pe.net.libre.aimap_client.home.HomeRoute
 import pe.net.libre.aimap_client.home.HomeViewModel
 import pe.net.libre.aimap_client.ui.theme.AimapTheme
 
@@ -29,7 +28,8 @@ class MainActivity : ComponentActivity() {
                 when (val s = state) {
                     AppState.Starting -> Box(Modifier.fillMaxSize().background(AimapTheme.colors.console))
                     is AppState.SignedOut -> SignInScreen(s.busy, s.error) { model.signIn(this) }
-                    is AppState.SignedIn -> HomeRoute(s, onRefresh = model::refresh, onSignOut = { model.signOut(this) })
+                    is AppState.SignedIn ->
+                        SignedInApp(s, model.api, onRefresh = model::refresh, onSignOut = { model.signOut(this) })
                 }
             }
         }

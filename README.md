@@ -5,6 +5,11 @@ The Android app for [aimap](https://github.com/jaxkodex/aimap): the home screen
 in with Google through Firebase Authentication and reads `GET /home` from the
 aimap API.
 
+Tapping a strip opens the message: its strip pinned over the letter, read from
+`GET /messages/{id}` and `GET /messages/{id}/body`. System Back returns to the
+Bay where you left it. The two keys on the foot, Handled and Later, are drawn
+but do nothing yet; the API is read-only.
+
 ## Setup
 
 Two files stay out of git. The build fails with a message until both exist.
