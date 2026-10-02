@@ -35,12 +35,19 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pe.net.libre.aimap_client.BuildConfig
+import pe.net.libre.aimap_client.detail.SampleMessage
 import pe.net.libre.aimap_client.settings.HomeLayout
 import pe.net.libre.aimap_client.ui.theme.AimapTheme
 import pe.net.libre.aimap_client.ui.theme.BodyFont
 import pe.net.libre.aimap_client.ui.theme.CallFont
 
-/** The Bay once signed in: the live home, or its first load, or why it failed. */
+/**
+ * The Bay once signed in: the live home, or its first load, or why it failed.
+ *
+ * [onOpenMessage] opens the read screen. It is handed to [HomeScreen]'s `onOpen`, which the
+ * strips call when tapped.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeRoute(
@@ -49,6 +56,7 @@ fun HomeRoute(
     onLayout: (HomeLayout) -> Unit,
     onRefresh: () -> Unit,
     onSignOut: () -> Unit,
+    onOpenMessage: (Long) -> Unit = {},
 ) {
     var account by rememberSaveable { mutableStateOf(false) }
     val home = state.home
@@ -63,9 +71,9 @@ fun HomeRoute(
         )
     } else {
         PullToRefreshBox(isRefreshing = state.loading, onRefresh = onRefresh) {
-            // The network side of opening and acting on a strip is not wired yet.
+            // Acting on a strip is not wired to the API yet.
             when (layout) {
-                HomeLayout.V4 -> HomeScreen(home, onOpen = {}, onAction = { _, _ -> }, onAvatar = { account = true })
+                HomeLayout.V4 -> HomeScreen(home, onOpen = onOpenMessage, onAction = { _, _ -> }, onAvatar = { account = true })
                 HomeLayout.V5 -> HomeV5Screen(home, onAvatar = { account = true })
             }
             state.error?.let { ErrorBar(it, onRefresh) }
@@ -79,6 +87,12 @@ fun HomeRoute(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Signed in to aimap with this Google account.")
                     LayoutChoice(layout, onLayout)
+                    if (BuildConfig.DEBUG) {
+                        // Debug only: the read screen without the API, on the sample message.
+                        TextButton({ account = false; onOpenMessage(SampleMessage.ID) }) {
+                            Text("Open the sample message")
+                        }
+                    }
                 }
             },
             confirmButton = { TextButton({ account = false; onSignOut() }) { Text("Sign out") } },

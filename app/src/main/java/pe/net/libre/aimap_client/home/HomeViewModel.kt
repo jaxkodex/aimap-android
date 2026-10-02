@@ -38,7 +38,8 @@ sealed interface AppState {
 
 class HomeViewModel(
     private val auth: GoogleAuth = GoogleAuth(),
-    private val api: AimapApi = AimapApi(BuildConfig.API_BASE_URL, auth::idToken),
+    /** Read-only, so the screens that fetch one message share this one. */
+    val api: AimapApi = AimapApi(BuildConfig.API_BASE_URL, auth::idToken),
 ) : ViewModel() {
     private val _state = MutableStateFlow<AppState>(AppState.Starting)
     val state: StateFlow<AppState> = _state.asStateFlow()

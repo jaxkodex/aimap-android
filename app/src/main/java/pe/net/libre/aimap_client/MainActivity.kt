@@ -15,7 +15,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pe.net.libre.aimap_client.auth.SignInScreen
 import pe.net.libre.aimap_client.home.AppState
-import pe.net.libre.aimap_client.home.HomeRoute
 import pe.net.libre.aimap_client.home.HomeViewModel
 import pe.net.libre.aimap_client.settings.HomeLayout
 import pe.net.libre.aimap_client.settings.HomeLayoutStore
@@ -36,8 +35,9 @@ class MainActivity : ComponentActivity() {
                 when (val s = state) {
                     AppState.Starting -> Box(Modifier.fillMaxSize().background(AimapTheme.colors.console))
                     is AppState.SignedOut -> SignInScreen(s.busy, s.error) { model.signIn(this) }
-                    is AppState.SignedIn -> HomeRoute(
+                    is AppState.SignedIn -> SignedInApp(
                         state = s,
+                        api = model.api,
                         layout = layout,
                         onLayout = { chosen -> scope.launch { layouts.set(chosen) } },
                         onRefresh = model::refresh,
