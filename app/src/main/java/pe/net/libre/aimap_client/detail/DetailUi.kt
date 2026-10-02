@@ -9,9 +9,6 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** The two keys on the foot. The reply tray will take their place once there is a write API. */
-enum class DetailAction { Handled, Later }
-
 /** What the read screen is showing. */
 sealed interface Read {
     /** The metadata is still coming: the screen draws a skeleton, never a spinner. */

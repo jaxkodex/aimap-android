@@ -13,16 +13,18 @@ class HomeJsonTest {
     private val home = """
         {
           "brief": {"new": 3, "act_now": 1, "waiting": 1, "sorted": 1, "unclassified": 0,
-                    "text": "3 new emails.", "sorted_at": "2026-09-30T12:03:00Z",
+                    "handled_today": 2, "text": "3 new emails.", "sorted_at": "2026-09-30T12:03:00Z",
                     "by_hour": [{"hour": 8, "act_now": 1, "waiting": 0, "sorted": 2, "unclassified": 0}]},
           "act_now": [{"message_id": 11, "account": "me@example.com", "profile": null, "sender": "Ana Ruiz",
                        "from_email": "ana@example.com", "subject": null, "sent_at": "2026-09-30T08:41:00+00:00",
                        "unread": true, "action_bucket": "act_now", "importance": "high", "priority": 0.9,
-                       "needs_review": false, "reasons": ["Mentions a deadline", "Asks you to do something"]}],
+                       "needs_review": false, "reasons": ["Mentions a deadline", "Asks you to do something"],
+                       "state": null}],
           "waiting": [{"message_id": 12, "account": "me@example.com", "profile": "work", "sender": "Marta Gil",
                        "from_email": null, "subject": "Venue?", "sent_at": "2026-09-26T09:30:00.123456+00:00",
                        "unread": false, "action_bucket": "reply", "importance": null, "priority": 0.4,
-                       "needs_review": true, "reasons": [], "waiting_since": "2026-09-26T09:30:00.123456+00:00"}],
+                       "needs_review": true, "reasons": [], "waiting_since": "2026-09-26T09:30:00.123456+00:00",
+                       "state": "later"}],
           "sorted": [{"name": "Receipts", "count": 7, "unread": 5, "latest_at": null, "summary": "Uber + 1 more"}]
         }
     """.trimIndent()
@@ -31,8 +33,14 @@ class HomeJsonTest {
     fun parses_the_brief() {
         val b = parseHome(home).brief
         assertEquals(listOf(3, 1, 1, 1, 0), listOf(b.new, b.actNow, b.waiting, b.sorted, b.unclassified))
+        assertEquals(2, b.handledToday)
         assertEquals(Instant.parse("2026-09-30T12:03:00Z"), b.sortedAt)
         assertEquals(3, b.byHour.single().total)
+    }
+
+    @Test
+    fun a_brief_without_handled_today_counts_none() {
+        assertEquals(0, parseHome(home.replace("\"handled_today\": 2,", "")).brief.handledToday)
     }
 
     @Test
@@ -50,6 +58,13 @@ class HomeJsonTest {
         assertEquals("work", wait.profile)
         assertTrue(wait.needsReview)
         assertEquals(Instant.parse("2026-09-26T09:30:00.123456Z"), wait.waitingSince)
+    }
+
+    @Test
+    fun parses_the_cards_state() {
+        val h = parseHome(home)
+        assertNull(h.actNow.single().state)
+        assertEquals(MessageState.Later, h.waiting.single().state)
     }
 
     @Test

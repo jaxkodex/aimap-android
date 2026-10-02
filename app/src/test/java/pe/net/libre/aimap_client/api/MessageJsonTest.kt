@@ -71,6 +71,25 @@ class MessageJsonTest {
     }
 
     @Test
+    fun parses_an_action_with_an_offset_or_a_zulu_stamp() {
+        val offset = parseAction(
+            """{"message_id": 12, "state": "handled", "changed_at": "2026-09-28T09:00:00+00:00"}"""
+        )
+        assertEquals(ActionState(12L, MessageState.Handled, Instant.parse("2026-09-28T09:00:00Z")), offset)
+
+        val zulu = parseAction("""{"message_id": 12, "state": "later", "changed_at": "2026-09-28T09:00:00Z"}""")
+        assertEquals(ActionState(12L, MessageState.Later, Instant.parse("2026-09-28T09:00:00Z")), zulu)
+    }
+
+    @Test
+    fun an_undone_action_has_no_state_and_no_stamp() {
+        val undone = parseAction("""{"message_id": 12, "state": null, "changed_at": null}""")
+        assertEquals(12L, undone.messageId)
+        assertNull(undone.state)
+        assertNull(undone.changedAt)
+    }
+
+    @Test
     fun parses_the_body() {
         assertEquals(
             "Thanks for applying.\nCould you send a few times?",

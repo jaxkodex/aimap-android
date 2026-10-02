@@ -28,7 +28,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -46,7 +48,8 @@ import pe.net.libre.aimap_client.ui.theme.CallFont
  * The Bay once signed in: the live home, or its first load, or why it failed.
  *
  * [onOpenMessage] opens the read screen. It is handed to [HomeScreen]'s `onOpen`, which the
- * strips call when tapped.
+ * strips call when tapped. [onAction] is the one write, the same callback for every layout: the
+ * keys on a strip, and the undo bar that follows a Handled.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +60,8 @@ fun HomeRoute(
     onRefresh: () -> Unit,
     onSignOut: () -> Unit,
     onOpenMessage: (Long) -> Unit = {},
+    onAction: (Long, HomeAction) -> Unit = { _, _ -> },
+    onDismissError: () -> Unit = {},
 ) {
     var account by rememberSaveable { mutableStateOf(false) }
     val home = state.home
@@ -71,12 +76,20 @@ fun HomeRoute(
         )
     } else {
         PullToRefreshBox(isRefreshing = state.loading, onRefresh = onRefresh) {
-            // Acting on a strip is not wired to the API yet.
             when (layout) {
-                HomeLayout.V4 -> HomeScreen(home, onOpen = onOpenMessage, onAction = { _, _ -> }, onAvatar = { account = true })
-                HomeLayout.V5 -> HomeV5Screen(home, onOpen = onOpenMessage, onAction = { _, _ -> }, onAvatar = { account = true })
+                HomeLayout.V4 -> HomeScreen(home, onOpen = onOpenMessage, onAction = onAction, onAvatar = { account = true })
+                HomeLayout.V5 -> HomeV5Screen(home, onOpen = onOpenMessage, onAction = onAction, onAvatar = { account = true })
             }
-            state.error?.let { ErrorBar(it, onRefresh) }
+            // Both bars ride at the top: the archive dock's hold target at the foot stays clear.
+            Column(Modifier.statusBarsPadding()) {
+                when {
+                    state.error != null -> ErrorBar(state.error, "Tap to retry.", "Try again", onRefresh)
+                    state.actionError != null -> ErrorBar(state.actionError, "Tap to dismiss.", "Dismiss", onDismissError)
+                }
+                state.undo?.let { undo ->
+                    UndoBar(undo.text) { onAction(undo.messageId, HomeAction.Undo) }
+                }
+            }
         }
     }
     if (account) {
@@ -157,15 +170,44 @@ private fun Notice(text: String, loading: Boolean, actions: List<Pair<String, ()
     }
 }
 
-/** A refresh failed but the last bay is still on screen. */
+/** A refresh or an action failed but the last bay is still on screen. */
 @Composable
-private fun ErrorBar(text: String, onRetry: () -> Unit) {
+private fun ErrorBar(text: String, note: String, label: String, onTap: () -> Unit) {
     val c = AimapTheme.colors
     Box(
-        Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 4.dp).fillMaxWidth()
-            .background(c.paper, RoundedCornerShape(2.dp)).clickable(onClickLabel = "Try again", onClick = onRetry)
+        Modifier.padding(horizontal = 20.dp, vertical = 4.dp).fillMaxWidth()
+            .background(c.paper, RoundedCornerShape(2.dp)).clickable(onClickLabel = label, onClick = onTap)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Text("$text Tap to retry.", style = TextStyle(fontFamily = BodyFont, fontSize = 14.sp, color = c.ink))
+        Text("$text $note", style = TextStyle(fontFamily = BodyFont, fontSize = 14.sp, color = c.ink))
+    }
+}
+
+/**
+ * "Handled · Undo" for about five seconds after a message leaves the Bay. The whole bar is the key,
+ * so nothing under it is tapped by mistake and the target is well over 48dp. TalkBack reads the bar
+ * as it appears, and it rides at the top, where it never sits on the archive dock's hold target.
+ */
+@Composable
+private fun UndoBar(text: String, onUndo: () -> Unit) {
+    val c = AimapTheme.colors
+    Row(
+        Modifier.padding(horizontal = 20.dp, vertical = 4.dp).fillMaxWidth().heightIn(min = 48.dp)
+            .background(c.holderYellow, RoundedCornerShape(2.dp))
+            .clickable(role = Role.Button, onClickLabel = "Undo", onClick = onUndo)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text,
+            Modifier.weight(1f),
+            style = TextStyle(fontFamily = CallFont, fontWeight = FontWeight(700), fontSize = 16.sp, color = c.ink),
+        )
+        Text(
+            "Undo",
+            style = TextStyle(fontFamily = CallFont, fontWeight = FontWeight(800), fontSize = 16.sp, color = c.ink),
+        )
     }
 }

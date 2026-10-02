@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import pe.net.libre.aimap_client.api.MessageState
 import pe.net.libre.aimap_client.home.Bay
+import pe.net.libre.aimap_client.home.HomeAction
 import pe.net.libre.aimap_client.home.Lucide
 import pe.net.libre.aimap_client.ui.theme.AimapTheme
 import pe.net.libre.aimap_client.ui.theme.BodyFont
@@ -78,7 +79,7 @@ private fun style(font: FontFamily, size: Int, weight: Int = 400, color: Color, 
 /**
  * The read screen from the Pencil design ("Detail — read"): the message's strip pinned
  * over the letter on paper. The foot is deliberately slim, so the reply tray can take
- * its place once there is a write API.
+ * its place once there is a send API; its two keys write aimap's own state.
  */
 @Composable
 fun DetailScreen(
@@ -88,7 +89,7 @@ fun DetailScreen(
     onBack: () -> Unit = {},
     onRetry: () -> Unit = {},
     onRetryBody: () -> Unit = {},
-    onAction: (Long, DetailAction) -> Unit = { _, _ -> },
+    onAction: (Long, HomeAction) -> Unit = { _, _ -> },
 ) {
     val c = AimapTheme.colors
     Column(modifier.fillMaxSize().background(c.console)) {
@@ -399,7 +400,7 @@ private fun Notice(title: String, text: String, keys: List<Pair<String, () -> Un
  * reply tray needs, so swapping it in means replacing this composable.
  */
 @Composable
-private fun Foot(ui: DetailUi, onAction: (Long, DetailAction) -> Unit) {
+private fun Foot(ui: DetailUi, onAction: (Long, HomeAction) -> Unit) {
     val c = AimapTheme.colors
     Row(
         Modifier.fillMaxWidth().background(c.consoleDeep).topRule(c.rail).navigationBarsPadding()
@@ -413,7 +414,7 @@ private fun Foot(ui: DetailUi, onAction: (Long, DetailAction) -> Unit) {
             outline = null,
             current = ui.state == MessageState.Handled,
             modifier = Modifier.weight(1f),
-        ) { onAction(ui.messageId, DetailAction.Handled) }
+        ) { onAction(ui.messageId, HomeAction.Handled) }
         Key(
             "Later",
             Lucide.Clock,
@@ -421,7 +422,7 @@ private fun Foot(ui: DetailUi, onAction: (Long, DetailAction) -> Unit) {
             outline = c.ink,
             current = ui.state == MessageState.Later,
             modifier = Modifier.weight(1f),
-        ) { onAction(ui.messageId, DetailAction.Later) }
+        ) { onAction(ui.messageId, HomeAction.Later) }
     }
 }
 

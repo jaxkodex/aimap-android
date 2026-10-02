@@ -7,8 +7,8 @@ aimap API.
 
 Tapping a strip opens the message: its strip pinned over the letter, read from
 `GET /messages/{id}` and `GET /messages/{id}/body`. System Back returns to the
-Bay where you left it. The two keys on the foot, Handled and Later, are drawn
-but do nothing yet; the API is read-only.
+Bay where you left it. The two keys on the foot, Handled and Later, write
+aimap's own state; the mailbox is never touched.
 
 ## Setup
 
@@ -44,6 +44,23 @@ The API only answers Firebase users whose email is in its
 ./gradlew :app:testDebugUnitTest   # unit tests
 ./gradlew :app:installDebug        # build and install on a connected device
 ```
+
+## Handled, Later and Undo
+
+The keys on a strip and the two on the read screen's foot post to
+`POST /messages/{id}/actions`. Handled takes the message off the Bay and counts
+it down on its plate; Later keeps it in its section but sends it to the end,
+marked LATER; Undo puts it back. Nothing waits for the API: the Bay moves
+first, and a call that fails puts it back and says why on the error bar. A
+Handled leaves a "Handled · Undo" bar at the top for about five seconds.
+
+`Needs a reply`, `Can go` and the per-pile Archive keys have no API yet. They
+read as keys but do nothing, and TalkBack says "Coming soon".
+
+Debug builds carry two paths that need no account: "Open the sample bay" under
+the sign-in plate, and "Open the sample message" in the avatar sheet. Acting on
+the sample bay's second card always fails, which is how the rollback gets
+tried.
 
 ## Home layout
 
