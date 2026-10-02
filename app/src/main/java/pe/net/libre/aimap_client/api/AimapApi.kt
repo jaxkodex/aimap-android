@@ -26,6 +26,12 @@ class AimapApi(
 
     suspend fun accounts(): List<Account> = parseAccounts(get("/accounts"))
 
+    /** One message's metadata and labels. A 404 means it is not in the database. */
+    suspend fun message(id: Long): Message = parseMessage(get("/messages/$id"))
+
+    /** The text body. A 404 also means the message is no longer in the bucket. */
+    suspend fun messageBody(id: Long): String = parseMessageBody(get("/messages/$id/body"))
+
     private suspend fun get(path: String): String = try {
         request(path, token(false))
     } catch (e: ApiException) {
