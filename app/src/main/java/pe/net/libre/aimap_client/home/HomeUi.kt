@@ -10,11 +10,17 @@ import java.util.Locale
 /** The three bays, ranked by attention. Each owns one holder colour. */
 enum class Bay { NeedsYou, Waiting, CanGo }
 
-enum class StripAction { Done, Reply }
+/** What a key on a strip asks the app to do with that message. */
+enum class HomeAction { Handled, Later, Undo }
+
+/** The labelled keys a strip can carry. Only [Handled], [ItWasMe] and [Reply] are wired. */
+enum class StripKey { Handled, ItWasMe, Reply, NeedsReply, CanGo }
 
 data class HomeUi(
     val header: HeaderUi,
     val plates: Map<Bay, Int>,
+    /** The order of work, in one line, under the plates. */
+    val guide: String,
     val traffic: TrafficUi,
     val needsYou: List<StripUi>,
     val waiting: List<StripUi>,
@@ -44,8 +50,9 @@ data class StripUi(
     /** The bucket word (ACT, CHECK) or the wait age (4d). */
     val top: String,
     val topIsAge: Boolean,
-    /** The time today, or the day before that. */
+    /** The arrival time, or the word "waiting" when the holder counts the wait. */
     val bottom: String,
+    val bottomIsWord: Boolean,
     val greased: Boolean,
     val sender: String,
     val account: String,
@@ -54,12 +61,13 @@ data class StripUi(
     val moreReasons: Int,
     /** needs_review: the strip is cocked out of line. */
     val cocked: Boolean,
-    val action: StripAction,
+    val keys: List<StripKey>,
     /** Hour of today it arrived, for the traffic scrub; null if not today. */
     val hourToday: Int?,
 )
 
-data class PileUi(val name: String, val count: Int, val latest: String?, val summary: String, val underSheets: Int)
+/** A sorted group: the count, the latest arrival time and who sent them. */
+data class PileUi(val name: String, val count: Int, val latest: String?, val summary: String)
 
 const val FIRST_HOUR = 6
 const val LAST_HOUR = 22
@@ -74,6 +82,7 @@ fun Home.toUi(now: ZonedDateTime, accounts: Int, initials: String, days: Int = 7
     return HomeUi(
         header = HeaderUi("All inboxes", accounts, brief.sortedAt?.let { "sorted " + clock(it, now) }, initials),
         plates = mapOf(Bay.NeedsYou to brief.actNow, Bay.Waiting to brief.waiting, Bay.CanGo to brief.sorted),
+        guide = guideLine(brief.actNow, brief.waiting, brief.sorted),
         traffic = traffic(brief.byHour, now.hour),
         needsYou = actNow.map { c ->
             strip(c, Bay.NeedsYou, now).copy(
@@ -85,42 +94,67 @@ fun Home.toUi(now: ZonedDateTime, accounts: Int, initials: String, days: Int = 7
             strip(c, Bay.Waiting, now).copy(
                 top = waitAge(c.waitingSince ?: c.sentAt, now),
                 topIsAge = true,
+                bottom = "waiting",
+                bottomIsWord = true,
                 greased = c.messageId == longestWait,
-                action = StripAction.Reply,
             )
         },
-        piles = sorted.map { g ->
-            PileUi(g.name, g.count, g.latestAt?.let { "latest " + stamp(it, now) }, g.summary, underSheets(g.count))
-        },
+        piles = sorted.map { g -> PileUi(g.name, g.count, g.latestAt?.let { stamp(it, now) }, g.summary) },
         unsorted = brief.unclassified,
-        footer = "Last $days days · $accounts inbox${if (accounts == 1) "" else "es"} · all strips shown",
+        footer = "Last $days days · $accounts inbox${if (accounts == 1) "" else "es"} · nothing hidden",
         archiveCount = brief.sorted,
     )
 }
 
+/**
+ * The line under the plates: the order of work, read off the counts. A bay at zero drops out of
+ * the sentence, and when nothing needs you the line says so instead of giving orders.
+ */
+fun guideLine(needsYou: Int, waiting: Int, canGo: Int): String {
+    val jobs = buildList {
+        if (needsYou > 0) add("handle $needsYou")
+        if (waiting > 0) add("answer $waiting")
+        if (canGo > 0) add("clear $canGo")
+    }
+    return when {
+        jobs.isEmpty() -> "All clear."
+        needsYou == 0 && waiting == 0 -> "All handled. $canGo can go when you're ready."
+        jobs.size == 3 -> "Work down the list: ${jobs.inOrder()}."
+        else -> "${jobs.inOrder().replaceFirstChar { it.uppercase() }}."
+    }
+}
+
+/** "handle 2, answer 3, then clear 28": the last job is the one you get to last. */
+private fun List<String>.inOrder() =
+    if (size == 1) first() else dropLast(1).joinToString(", ") + ", then " + last()
+
 private fun strip(c: Card, bay: Bay, now: ZonedDateTime): StripUi {
     val sent = c.sentAt?.atZone(now.zone)
-    val reason = when {
-        c.needsReview && c.reasons.isNotEmpty() -> "Unsure: " + c.reasons.first().replaceFirstChar { it.lowercase() } + "?"
-        c.needsReview -> "Unsure about this one"
-        else -> c.reasons.firstOrNull()
-    }
     return StripUi(
         messageId = c.messageId,
         bay = bay,
         top = "",
         topIsAge = false,
         bottom = c.sentAt?.let { stamp(it, now) } ?: "",
+        bottomIsWord = false,
         greased = false,
         sender = c.sender,
         account = c.profile ?: c.account.substringBefore('@'),
         subject = c.subject ?: "(no subject)",
-        reason = reason,
-        moreReasons = (c.reasons.size - 1).coerceAtLeast(0),
+        reason = if (c.needsReview) "Unsure: does this need a reply?" else c.reasons.firstOrNull(),
+        moreReasons = if (c.needsReview) 0 else (c.reasons.size - 1).coerceAtLeast(0),
         cocked = c.needsReview,
-        action = StripAction.Done,
+        keys = keys(c, bay),
         hourToday = sent?.takeIf { it.toLocalDate() == now.toLocalDate() }?.hour,
     )
+}
+
+/** A strip the agent is unsure about offers both answers; the rest offer the one job to do. */
+private fun keys(c: Card, bay: Bay): List<StripKey> = when {
+    c.needsReview -> listOf(StripKey.NeedsReply, StripKey.CanGo)
+    bay == Bay.Waiting -> listOf(StripKey.Reply)
+    c.actionBucket == "verify" -> listOf(StripKey.ItWasMe)
+    else -> listOf(StripKey.Handled)
 }
 
 fun traffic(byHour: List<HourCount>, nowHour: Int): TrafficUi {
@@ -164,13 +198,6 @@ fun stamp(at: Instant, now: ZonedDateTime): String {
         days in 1..6 -> Weekday.format(local)
         else -> Day.format(local)
     }
-}
-
-/** A pile shows up to two under-sheet edges: one from 2 strips, two from 5. */
-fun underSheets(count: Int) = when {
-    count >= 5 -> 2
-    count >= 2 -> 1
-    else -> 0
 }
 
 private fun clock(at: Instant, now: ZonedDateTime) = Clock.format(at.atZone(now.zone))

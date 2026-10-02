@@ -64,4 +64,15 @@ object SampleHome {
             SortedGroup("Can discard", 3, 3, at(0, 8, 12), "LinkedIn, Glovo"),
         ),
     )
+
+    /** Nothing needs you and nothing waits: the guide line and every bay at rest. */
+    val clear = Home(
+        brief = Brief(
+            new = 0, actNow = 0, waiting = 0, sorted = 0, unclassified = 0,
+            text = "Nothing new.", sortedAt = at(0, 14, 3), byHour = emptyList(),
+        ),
+        actNow = emptyList(),
+        waiting = emptyList(),
+        sorted = emptyList(),
+    )
 }
