@@ -30,6 +30,7 @@ fun DetailRoute(
 ) {
     val scope = rememberCoroutineScope()
     var state by remember(messageId) { mutableStateOf<Read>(Read.Loading) }
+    var draftState by remember(messageId) { mutableStateOf<DraftState?>(null) }
     val sampled = BuildConfig.DEBUG && (sample || messageId == SampleMessage.ID)
 
     val loadBody: () -> Unit = {
@@ -47,6 +48,20 @@ fun DetailRoute(
             if (state is Read.Ready && !sampled) loadBody()
         }
     }
+    val loadDraft: (String) -> Unit = { instructions ->
+        scope.launch {
+            draftState = DraftState.Loading
+            draftState = if (sampled) {
+                try {
+                    DraftState.Ready(SampleMessage.sampleDraft(messageId), instructions)
+                } catch (e: Exception) {
+                    DraftState.Failed(e.message ?: "Unknown error", instructions)
+                }
+            } else {
+                fetchDraft(api, messageId, instructions)
+            }
+        }
+    }
 
     LaunchedEffect(messageId) { load() }
 
@@ -56,6 +71,10 @@ fun DetailRoute(
         onRetry = load,
         onRetryBody = loadBody,
         onAction = onAction,
+        draftState = draftState,
+        onDraftReply = { loadDraft("") },
+        onCloseDraft = { draftState = null },
+        onRegenerateDraft = loadDraft,
     )
 }
 
@@ -80,4 +99,15 @@ private suspend fun fetchBody(api: AimapApi, id: Long): BodyState = try {
     )
 } catch (e: Exception) {
     BodyState.Failed("Couldn't reach aimap. ${e.message.orEmpty()}".trim())
+}
+
+private suspend fun fetchDraft(api: AimapApi, id: Long, instructions: String): DraftState = try {
+    val draft = api.draft(id, instructions.ifBlank { null })
+    DraftState.Ready(draft, instructions)
+} catch (e: CancellationException) {
+    throw e
+} catch (e: ApiException) {
+    DraftState.Failed("aimap said: ${e.message}", instructions)
+} catch (e: Exception) {
+    DraftState.Failed("Couldn't reach aimap. ${e.message.orEmpty()}".trim(), instructions)
 }

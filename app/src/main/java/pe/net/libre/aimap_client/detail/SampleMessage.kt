@@ -1,8 +1,10 @@
 package pe.net.libre.aimap_client.detail
 
+import pe.net.libre.aimap_client.api.Draft
 import pe.net.libre.aimap_client.api.Labels
 import pe.net.libre.aimap_client.api.Mailbox
 import pe.net.libre.aimap_client.api.Message
+import pe.net.libre.aimap_client.api.Reply
 import pe.net.libre.aimap_client.home.SampleHome
 
 /**
@@ -39,6 +41,7 @@ object SampleMessage {
         ),
         mailboxes = listOf(Mailbox("INBOX", emptyList())),
         state = null,
+        reply = Reply(needed = true, reason = "A person asked you to schedule an interview."),
     )
 
     // One line per paragraph: the API strips blank lines, and mail arrives flowed more often than wrapped.
@@ -59,4 +62,34 @@ object SampleMessage {
     /** The same letter under another message's number, so the sample Bay can open any of its cards. */
     fun read(messageId: Long): Read.Ready =
         if (messageId == ID) read else Read.Ready(message.copy(messageId = messageId).toUi(SampleHome.now), BodyState.Text(body))
+
+    /** A sample draft for testing the reply sheet. No real network call. */
+    val draft = Draft(
+        messageId = ID,
+        needsReply = true,
+        replyReason = "A person asked you to schedule an interview.",
+        to = listOf("priya@northwind-talent.example"),
+        cc = emptyList(),
+        subject = "RE: Interview: Senior Data Engineer at Northwind",
+        body = """Hi Priya,
+
+Thanks for reaching out. I'm available for the interview next week on Tuesday or Wednesday after 15:00 Berlin time.
+
+I'd appreciate if you could send the full role description and salary band as well.
+
+Best regards,
+Jorge""".trimIndent(),
+        model = "deepseek-chat",
+        usedMessageIds = listOf(ID),
+        createdAt = SampleHome.now.toInstant(),
+    )
+
+    /**
+     * Returns a draft for a message id, or throws an exception for even ids so the
+     * error state can be tested.
+     */
+    fun sampleDraft(messageId: Long): Draft {
+        if (messageId % 2 == 0L) throw RuntimeException("Drafting is not configured.")
+        return draft.copy(messageId = messageId)
+    }
 }

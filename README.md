@@ -54,8 +54,20 @@ marked LATER; Undo puts it back. Nothing waits for the API: the Bay moves
 first, and a call that fails puts it back and says why on the error bar. A
 Handled leaves a "Handled · Undo" bar at the top for about five seconds.
 
-`Needs a reply`, `Can go` and the per-pile Archive keys have no API yet. They
-read as keys but do nothing, and TalkBack says "Coming soon".
+## Draft a reply
+
+Messages that need an answer show a reply key above Handled and Later on the
+read screen. The service decides whether a message needs a reply; the app falls
+back to a local heuristic (action bucket reply, or act_now on a non-bulk
+message) when the service is older. Tapping the key calls
+`GET /messages/{id}/thread` to read the conversation, then
+`POST /messages/{id}/draft` to draft the reply. The draft opens in a sheet
+where you can refine it with instructions, copy it, or hand it to a mail app
+through an ACTION_SENDTO intent. Nothing is sent from aimap; the mailbox is
+never touched.
+
+`Can go` and the per-pile Archive keys have no API yet. They read as keys but
+do nothing, and TalkBack says "Coming soon".
 
 Debug builds carry two paths that need no account: "Open the sample bay" under
 the sign-in plate, and "Open the sample message" in the avatar sheet. Acting on

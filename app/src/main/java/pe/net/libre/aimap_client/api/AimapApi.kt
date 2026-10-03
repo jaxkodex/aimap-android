@@ -42,6 +42,18 @@ class AimapApi(
     suspend fun act(id: Long, action: HomeAction): ActionState =
         parseAction(post("/messages/$id/actions", """{"action": "${action.wire}"}"""))
 
+    /** The messages of one thread, newest first. A 404 means aimap has no such message. */
+    suspend fun thread(id: Long): Thread = parseThread(get("/messages/$id/thread"))
+
+    /**
+     * Drafts a reply. [instructions] can be null or up to 2000 characters; the post helper
+     * already escapes it correctly. A 503 means drafting is not configured.
+     */
+    suspend fun draft(id: Long, instructions: String?): Draft {
+        val body = buildDraftRequest(instructions)
+        return parseDraft(post("/messages/$id/draft", body))
+    }
+
     private suspend fun get(path: String): String = try {
         request(path, token(false))
     } catch (e: ApiException) {
@@ -81,4 +93,14 @@ class AimapApi(
 
     private fun detail(body: String): String? =
         runCatching { JSONObject(body).optString("detail").ifEmpty { null } }.getOrNull()
+}
+
+/**
+ * Builds the JSON request body for `POST /messages/{id}/draft`, with the instructions properly
+ * escaped. JSONObject handles the escaping so string concatenation is safe after that.
+ */
+fun buildDraftRequest(instructions: String?): String {
+    val o = JSONObject()
+    if (instructions != null) o.put("instructions", instructions)
+    return o.toString()
 }

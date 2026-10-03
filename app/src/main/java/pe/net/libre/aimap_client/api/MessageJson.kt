@@ -23,6 +23,8 @@ data class Message(
     val mailboxes: List<Mailbox>,
     /** What was already done with it. The API leaves it out until actions are stored. */
     val state: MessageState?,
+    /** Reply detection from the service. Absent from older services. */
+    val reply: Reply? = null,
 )
 
 /** The latest classification, with the reasons the API builds from its signals. */
@@ -84,6 +86,7 @@ fun parseMessage(json: String): Message {
             Mailbox(it.string("mailbox").orEmpty(), it.optJSONArray("flags").strings())
         },
         state = MessageState.of(o.string("state")),
+        reply = o.optJSONObject("reply")?.let(::parseReply),
     )
 }
 

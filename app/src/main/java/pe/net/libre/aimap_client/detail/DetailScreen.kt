@@ -90,25 +90,40 @@ fun DetailScreen(
     onRetry: () -> Unit = {},
     onRetryBody: () -> Unit = {},
     onAction: (Long, HomeAction) -> Unit = { _, _ -> },
+    draftState: DraftState? = null,
+    onDraftReply: () -> Unit = {},
+    onCloseDraft: () -> Unit = {},
+    onRegenerateDraft: (String) -> Unit = {},
 ) {
     val c = AimapTheme.colors
-    Column(modifier.fillMaxSize().background(c.console)) {
-        TopBar(back, onBack)
-        when (read) {
-            Read.Loading -> Skeleton()
-            Read.Gone -> Notice(
-                "That message is gone.",
-                "aimap has no message with that number any more. The bay will have moved on too.",
-                listOf("Back to the $back" to onBack),
-            )
+    Box(modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().background(c.console)) {
+            TopBar(back, onBack)
+            when (read) {
+                Read.Loading -> Skeleton()
+                Read.Gone -> Notice(
+                    "That message is gone.",
+                    "aimap has no message with that number any more. The bay will have moved on too.",
+                    listOf("Back to the $back" to onBack),
+                )
 
-            is Read.Failed -> Notice("Couldn't read this message.", read.text, listOf("Try again" to onRetry))
-            is Read.Ready -> {
-                PinnedStrip(read.ui)
-                Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
-                    Letter(read.ui, read.body, onRetryBody)
+                is Read.Failed -> Notice("Couldn't read this message.", read.text, listOf("Try again" to onRetry))
+                is Read.Ready -> {
+                    PinnedStrip(read.ui)
+                    Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
+                        Letter(read.ui, read.body, onRetryBody)
+                    }
+                    Foot(read.ui, onAction, onDraftReply)
                 }
-                Foot(read.ui, onAction)
+            }
+        }
+        if (draftState != null) {
+            Box(
+                Modifier.fillMaxSize().background(c.underSheetDeep.copy(alpha = 0.6f))
+                    .clickable(enabled = false, onClick = {}),
+            )
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                DraftReplySheet(draftState, onCloseDraft, onRegenerateDraft)
             }
         }
     }
@@ -395,34 +410,69 @@ private fun Notice(title: String, text: String, keys: List<Pair<String, () -> Un
     }
 }
 
+/** The reply key: full width, shown only when the message needs a reply. */
+@Composable
+private fun ReplyKey(reason: String?, onClick: () -> Unit) {
+    val c = AimapTheme.colors
+    Column(
+        Modifier.fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .background(holder(Bay.NeedsYou), Plate)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "Draft a reply" }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Lucide.MessageSquare, null, Modifier.size(20.dp), tint = c.ink)
+            Text("Draft a reply", style = style(CallFont, 18, 800, c.ink))
+        }
+        if (reason != null) {
+            Text(reason, style = style(DataFont, 13, color = c.ink.copy(alpha = 0.7f)))
+        }
+    }
+}
+
 /**
- * The foot: two keys and nothing else. Keeping it one row high leaves the space the
- * reply tray needs, so swapping it in means replacing this composable.
+ * The foot: the reply key when needed, then Handled and Later. The reply key is full width
+ * above the two action keys.
  */
 @Composable
-private fun Foot(ui: DetailUi, onAction: (Long, HomeAction) -> Unit) {
+private fun Foot(ui: DetailUi, onAction: (Long, HomeAction) -> Unit, onDraftReply: () -> Unit = {}) {
     val c = AimapTheme.colors
-    Row(
+    Column(
         Modifier.fillMaxWidth().background(c.consoleDeep).topRule(c.rail).navigationBarsPadding()
             .padding(horizontal = Gutter, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Key(
-            "Handled",
-            Lucide.Check,
-            fill = holder(ui.bay),
-            outline = null,
-            current = ui.state == MessageState.Handled,
-            modifier = Modifier.weight(1f),
-        ) { onAction(ui.messageId, HomeAction.Handled) }
-        Key(
-            "Later",
-            Lucide.Clock,
-            fill = c.paper,
-            outline = c.ink,
-            current = ui.state == MessageState.Later,
-            modifier = Modifier.weight(1f),
-        ) { onAction(ui.messageId, HomeAction.Later) }
+        if (ui.needsReply) {
+            ReplyKey(ui.replyReason, onDraftReply)
+        }
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Key(
+                "Handled",
+                Lucide.Check,
+                fill = holder(ui.bay),
+                outline = null,
+                current = ui.state == MessageState.Handled,
+                modifier = Modifier.weight(1f),
+            ) { onAction(ui.messageId, HomeAction.Handled) }
+            Key(
+                "Later",
+                Lucide.Clock,
+                fill = c.paper,
+                outline = c.ink,
+                current = ui.state == MessageState.Later,
+                modifier = Modifier.weight(1f),
+            ) { onAction(ui.messageId, HomeAction.Later) }
+        }
     }
 }
 

@@ -55,6 +55,28 @@ object Lucide {
         "M21 4h-7", "M10 4H3", "M21 12h-9", "M8 12H3", "M21 20h-5", "M12 20H3",
         "M14 2v4", "M8 10v4", "M16 18v4",
     )
+    val MessageSquare = lucide(
+        "message-square",
+        "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
+    )
+    val Mail = lucide(
+        "mail",
+        "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z",
+        "m22 6-10 7L2 6",
+    )
+    val Copy = lucide(
+        "copy",
+        "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1",
+        "M9 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z",
+    )
+    val RefreshCw = lucide(
+        "refresh-cw",
+        "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8",
+        "M21 3v5h-5",
+        "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16",
+        "M8 16H3v5",
+    )
+    val X = lucide("x", "M18 6 6 18", "m6 6 12 12")
 
     private fun lucide(name: String, vararg paths: String): ImageVector {
         val b = ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f)
