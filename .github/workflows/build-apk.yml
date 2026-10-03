@@ -22,13 +22,13 @@ jobs:
 
       - name: Restore google-services.json
         env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          GOOGLE_SERVICES_JSON: ${{ vars.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -z "$GOOGLE_SERVICES_JSON" ]; then
-            echo "::error::Secret GOOGLE_SERVICES_JSON is not set. Paste the contents of app/google-services.json (Firebase console) as that secret."
+            echo "::error::Variable GOOGLE_SERVICES_JSON is not set. Paste the contents of app/google-services.json as a repo variable."
             exit 1
           fi
-          echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          echo "$GOOGLE_SERVICES_JSON" | jq . > app/google-services.json
 
       - name: Build debug APK
         env:
