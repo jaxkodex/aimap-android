@@ -52,6 +52,10 @@ data class DetailUi(
     val to: String,
     val sent: String,
     val state: MessageState?,
+    /** True when the message needs a reply. */
+    val needsReply: Boolean,
+    /** The reason it needs a reply, one sentence or null. */
+    val replyReason: String?,
 ) {
     /** The ruled fields under the subject, the doubt first. */
     val fields: List<String> get() = if (unsure) listOf("Unsure") + reasons else reasons
@@ -84,6 +88,7 @@ fun Message.toUi(now: ZonedDateTime): DetailUi {
     val bucket = labels?.actionBucket
     val bay = bay(bucket)
     val label = profile ?: account.substringBefore('@')
+    val needsReply = reply?.needed ?: needsReplyFallback(labels, bulk)
     return DetailUi(
         messageId = messageId,
         bay = bay,
@@ -99,6 +104,8 @@ fun Message.toUi(now: ZonedDateTime): DetailUi {
         to = "you · $label",
         sent = sentAt?.let { sent(it, now) } ?: "unknown",
         state = state,
+        needsReply = needsReply,
+        replyReason = reply?.reason,
     )
 }
 

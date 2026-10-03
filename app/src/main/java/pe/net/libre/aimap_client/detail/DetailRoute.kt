@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import pe.net.libre.aimap_client.BuildConfig
 import pe.net.libre.aimap_client.api.AimapApi
@@ -30,7 +32,12 @@ fun DetailRoute(
 ) {
     val scope = rememberCoroutineScope()
     var state by remember(messageId) { mutableStateOf<Read>(Read.Loading) }
+    var draftState by remember(messageId) { mutableStateOf<DraftState?>(null) }
     val sampled = BuildConfig.DEBUG && (sample || messageId == SampleMessage.ID)
+
+    val handleMailAppError: (String?) -> Unit = { error ->
+        draftState = (draftState as? DraftState.Ready)?.copy(mailAppError = error)
+    }
 
     val loadBody: () -> Unit = {
         scope.launch {
@@ -47,6 +54,20 @@ fun DetailRoute(
             if (state is Read.Ready && !sampled) loadBody()
         }
     }
+    val loadDraft: (String) -> Unit = { instructions ->
+        scope.launch {
+            draftState = DraftState.Loading
+            draftState = if (sampled) {
+                try {
+                    DraftState.Ready(SampleMessage.sampleDraft(messageId), instructions, SampleMessage.earlier)
+                } catch (e: Exception) {
+                    DraftState.Failed(e.message ?: "Unknown error", instructions)
+                }
+            } else {
+                fetchDraft(api, messageId, instructions)
+            }
+        }
+    }
 
     LaunchedEffect(messageId) { load() }
 
@@ -56,6 +77,11 @@ fun DetailRoute(
         onRetry = load,
         onRetryBody = loadBody,
         onAction = onAction,
+        draftState = draftState,
+        onDraftReply = { loadDraft("") },
+        onCloseDraft = { draftState = null },
+        onRegenerateDraft = loadDraft,
+        onMailAppError = handleMailAppError,
     )
 }
 
@@ -80,4 +106,24 @@ private suspend fun fetchBody(api: AimapApi, id: Long): BodyState = try {
     )
 } catch (e: Exception) {
     BodyState.Failed("Couldn't reach aimap. ${e.message.orEmpty()}".trim())
+}
+
+/**
+ * The draft and the thread behind it, asked for together: the draft is the one that matters, so a
+ * thread call that fails leaves the sheet without its list of earlier letters and nothing else.
+ */
+private suspend fun fetchDraft(api: AimapApi, id: Long, instructions: String): DraftState = try {
+    coroutineScope {
+        val thread = async { runCatching { api.thread(id).messages }.getOrDefault(emptyList()) }
+        val draft = api.draft(id, instructions.ifBlank { null })
+        val earlier = thread.await()
+            .filter { it.messageId != id && it.messageId in draft.usedMessageIds }
+        DraftState.Ready(draft, instructions, earlier)
+    }
+} catch (e: CancellationException) {
+    throw e
+} catch (e: ApiException) {
+    DraftState.Failed("aimap said: ${e.message}", instructions)
+} catch (e: Exception) {
+    DraftState.Failed("Couldn't reach aimap. ${e.message.orEmpty()}".trim(), instructions)
 }
