@@ -5,6 +5,7 @@ import pe.net.libre.aimap_client.api.Labels
 import pe.net.libre.aimap_client.api.Mailbox
 import pe.net.libre.aimap_client.api.Message
 import pe.net.libre.aimap_client.api.Reply
+import pe.net.libre.aimap_client.api.ThreadMessage
 import pe.net.libre.aimap_client.home.SampleHome
 
 /**
@@ -80,8 +81,21 @@ I'd appreciate if you could send the full role description and salary band as we
 Best regards,
 Jorge""".trimIndent(),
         model = "deepseek-chat",
-        usedMessageIds = listOf(ID),
+        usedMessageIds = listOf(ID, ID - 1),
         createdAt = SampleHome.now.toInstant(),
+    )
+
+    /** The letter behind the sample one, as the thread route would hand it over. */
+    val earlier = listOf(
+        ThreadMessage(
+            messageId = ID - 1,
+            sender = "Priya Nair",
+            fromEmail = "priya@northwind-talent.example",
+            subject = "Senior Data Engineer at Northwind",
+            sentAt = sent.minusSeconds(86_400),
+            fromRecipient = false,
+            excerpt = "Your application is with the team. I will come back to you this week.",
+        ),
     )
 
     /**

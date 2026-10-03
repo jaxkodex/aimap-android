@@ -56,14 +56,17 @@ Handled leaves a "Handled · Undo" bar at the top for about five seconds.
 
 ## Draft a reply
 
-Messages that need an answer show a reply key above Handled and Later on the
-read screen. The service decides whether a message needs a reply; the app falls
-back to a local heuristic (action bucket reply, or act_now on a non-bulk
-message) when the service is older. Tapping the key calls
-`GET /messages/{id}/thread` to read the conversation, then
-`POST /messages/{id}/draft` to draft the reply. The draft opens in a sheet
-where you can refine it with instructions, copy it, or hand it to a mail app
-through an ACTION_SENDTO intent. Nothing is sent from aimap; the mailbox is
+A letter that wants an answer carries a third key above Handled and Later. The
+service decides which ones do and sends a `reply` object with the message; an
+older service without it leaves the app guessing from the labels (the reply
+bucket, or `act_now` on a letter no list sent).
+
+The key asks for `POST /messages/{id}/draft` and `GET /messages/{id}/thread`
+together. The sheet shows the draft, how many letters went into it and one line
+per letter behind it, so you can see what the model read. The instructions
+field rewrites it, Copy takes the body, and "Open in mail app" hands subject
+and body to an `ACTION_SENDTO` intent. A thread call that fails costs the list
+of earlier letters and nothing else. aimap sends nothing itself: the mailbox is
 never touched.
 
 `Can go` and the per-pile Archive keys have no API yet. They read as keys but

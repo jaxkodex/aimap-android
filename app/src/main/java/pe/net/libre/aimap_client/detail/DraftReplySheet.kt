@@ -41,11 +41,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import pe.net.libre.aimap_client.api.Draft
+import pe.net.libre.aimap_client.api.ThreadMessage
 import pe.net.libre.aimap_client.home.Lucide
 import pe.net.libre.aimap_client.ui.theme.AimapTheme
 import pe.net.libre.aimap_client.ui.theme.BodyFont
@@ -69,8 +71,17 @@ sealed interface DraftState {
     /** Working on the draft, the sheet shows a skeleton. */
     data object Loading : DraftState
 
-    /** The model returned a draft. */
-    data class Ready(val draft: Draft, val instructions: String, val mailAppError: String? = null) : DraftState
+    /**
+     * The model returned a draft. [earlier] is the letters behind it that went into the prompt,
+     * newest first, so the sheet can show its work. Empty when the thread starts here, or when the
+     * thread call failed: the draft is still good, so a missing list is never an error.
+     */
+    data class Ready(
+        val draft: Draft,
+        val instructions: String,
+        val earlier: List<ThreadMessage> = emptyList(),
+        val mailAppError: String? = null,
+    ) : DraftState
 
     /** The call failed: say so, keep the instructions, and let Regenerate try again. */
     data class Failed(val text: String, val instructions: String) : DraftState
@@ -113,7 +124,8 @@ fun DraftReplySheet(
         }
         when (state) {
             DraftState.Loading -> DraftSkeleton()
-            is DraftState.Ready -> DraftReady(state.draft, state.instructions, state.mailAppError, onRegenerate, onMailAppError)
+            is DraftState.Ready ->
+                DraftReady(state.draft, state.instructions, state.earlier, state.mailAppError, onRegenerate, onMailAppError)
             is DraftState.Failed -> DraftFailed(state.text, state.instructions, onRegenerate)
         }
     }
@@ -141,6 +153,7 @@ private fun DraftSkeleton() {
 private fun DraftReady(
     draft: Draft,
     instructions: String,
+    earlier: List<ThreadMessage>,
     mailAppError: String?,
     onRegenerate: (String) -> Unit,
     onMailAppError: (String?) -> Unit,
@@ -157,9 +170,6 @@ private fun DraftReady(
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val msgCount = draft.usedMessageIds.size
-                val msgWord = if (msgCount == 1) "message" else "messages"
-                Text("Read $msgCount $msgWord from this thread", style = style(DataFont, 12, color = c.inkMuted))
                 Text("TO: " + draft.to.joinToString(", "), style = style(DataFont, 12, color = c.inkMuted))
                 if (draft.cc.isNotEmpty()) {
                     Text("CC: " + draft.cc.joinToString(", "), style = style(DataFont, 12, color = c.inkMuted))
@@ -169,6 +179,7 @@ private fun DraftReady(
                 Text(draft.body, style = style(BodyFont, 16, color = c.ink, lineHeight = 1.42f))
             }
         }
+        Behind(draft, earlier)
         if (mailAppError != null) {
             Column(
                 Modifier.fillMaxWidth().clip(Plate).background(c.paper).padding(14.dp),
@@ -194,6 +205,37 @@ private fun DraftReady(
             onRegenerate(instructions)
         }
     }
+}
+
+/**
+ * What the draft was written from: the letter in hand, and one line per earlier message the model
+ * was given. The count comes from the draft's own `used_message_ids`, so it says what the service
+ * read, not what the thread holds.
+ */
+@Composable
+private fun Behind(draft: Draft, earlier: List<ThreadMessage>) {
+    val c = AimapTheme.colors
+    Column(
+        Modifier.fillMaxWidth().clip(Plate).background(c.paper).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(readLine(draft.usedMessageIds.size), style = style(DataFont, 12, color = c.inkMuted))
+        earlier.forEach { m ->
+            Text(
+                m.sender + (m.excerpt?.let { ": $it" } ?: ""),
+                style = style(BodyFont, 14, color = c.ink, lineHeight = 1.3f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** The line above the draft. One message read means the thread starts at the letter in hand. */
+fun readLine(used: Int): String = when {
+    used <= 1 -> "READ THIS LETTER ONLY"
+    used == 2 -> "READ THIS LETTER AND THE ONE BEHIND IT"
+    else -> "READ THIS LETTER AND THE ${used - 1} BEHIND IT"
 }
 
 @Composable

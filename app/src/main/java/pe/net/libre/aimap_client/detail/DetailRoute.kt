@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import pe.net.libre.aimap_client.BuildConfig
 import pe.net.libre.aimap_client.api.AimapApi
@@ -57,7 +59,7 @@ fun DetailRoute(
             draftState = DraftState.Loading
             draftState = if (sampled) {
                 try {
-                    DraftState.Ready(SampleMessage.sampleDraft(messageId), instructions)
+                    DraftState.Ready(SampleMessage.sampleDraft(messageId), instructions, SampleMessage.earlier)
                 } catch (e: Exception) {
                     DraftState.Failed(e.message ?: "Unknown error", instructions)
                 }
@@ -106,9 +108,18 @@ private suspend fun fetchBody(api: AimapApi, id: Long): BodyState = try {
     BodyState.Failed("Couldn't reach aimap. ${e.message.orEmpty()}".trim())
 }
 
+/**
+ * The draft and the thread behind it, asked for together: the draft is the one that matters, so a
+ * thread call that fails leaves the sheet without its list of earlier letters and nothing else.
+ */
 private suspend fun fetchDraft(api: AimapApi, id: Long, instructions: String): DraftState = try {
-    val draft = api.draft(id, instructions.ifBlank { null })
-    DraftState.Ready(draft, instructions)
+    coroutineScope {
+        val thread = async { runCatching { api.thread(id).messages }.getOrDefault(emptyList()) }
+        val draft = api.draft(id, instructions.ifBlank { null })
+        val earlier = thread.await()
+            .filter { it.messageId != id && it.messageId in draft.usedMessageIds }
+        DraftState.Ready(draft, instructions, earlier)
+    }
 } catch (e: CancellationException) {
     throw e
 } catch (e: ApiException) {
