@@ -87,6 +87,16 @@ sealed interface DraftState {
     data class Failed(val text: String, val instructions: String) : DraftState
 }
 
+/** The most instructions the draft takes; aimap rejects longer ones with a 400. */
+const val MAX_DRAFT_INSTRUCTIONS = 2000
+
+/** The instructions the sheet opens with: the ones that made this state, none while loading. */
+private fun instructionsOf(state: DraftState): String = when (state) {
+    is DraftState.Ready -> state.instructions
+    is DraftState.Failed -> state.instructions
+    DraftState.Loading -> ""
+}
+
 /**
  * The draft reply sheet: the proposed draft (selectable), an editable instructions field,
  * and Copy, Open in mail app, and Regenerate keys.
@@ -100,6 +110,10 @@ fun DraftReplySheet(
     modifier: Modifier = Modifier,
 ) {
     val c = AimapTheme.colors
+    // The instructions live here, above the loading/ready/failed states, so the Regenerate key
+    // always sends what the field shows now: aimap remembers nothing between calls. Seeded from
+    // whatever the sheet first opened with, then it is the user's until the sheet closes.
+    var instructions by remember { mutableStateOf(instructionsOf(state)) }
     Column(
         modifier
             .fillMaxWidth()
@@ -123,10 +137,18 @@ fun DraftReplySheet(
             }
         }
         when (state) {
-            DraftState.Loading -> DraftSkeleton()
+            DraftState.Loading -> {
+                DraftSkeleton()
+                // There from the start, so the first regeneration can carry new instructions.
+                InstructionsField(instructions, { instructions = it })
+            }
             is DraftState.Ready ->
-                DraftReady(state.draft, state.instructions, state.earlier, state.mailAppError, onRegenerate, onMailAppError)
-            is DraftState.Failed -> DraftFailed(state.text, state.instructions, onRegenerate)
+                DraftReady(
+                    state.draft, instructions, { instructions = it },
+                    state.earlier, state.mailAppError, onRegenerate, onMailAppError,
+                )
+            is DraftState.Failed ->
+                DraftFailed(state.text, instructions, { instructions = it }, onRegenerate)
         }
     }
 }
@@ -153,6 +175,7 @@ private fun DraftSkeleton() {
 private fun DraftReady(
     draft: Draft,
     instructions: String,
+    onInstructionsChange: (String) -> Unit,
     earlier: List<ThreadMessage>,
     mailAppError: String?,
     onRegenerate: (String) -> Unit,
@@ -189,7 +212,7 @@ private fun DraftReady(
                 Text(mailAppError, style = style(BodyFont, 15, color = c.inkMuted, lineHeight = 1.35f))
             }
         }
-        InstructionsField(instructions, onRegenerate)
+        InstructionsField(instructions, onInstructionsChange)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val clipboard = LocalClipboardManager.current
             DraftKey("Copy", Lucide.Copy, Modifier.weight(1f)) {
@@ -239,7 +262,12 @@ fun readLine(used: Int): String = when {
 }
 
 @Composable
-private fun DraftFailed(text: String, instructions: String, onRegenerate: (String) -> Unit) {
+private fun DraftFailed(
+    text: String,
+    instructions: String,
+    onInstructionsChange: (String) -> Unit,
+    onRegenerate: (String) -> Unit,
+) {
     val c = AimapTheme.colors
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(
@@ -249,22 +277,28 @@ private fun DraftFailed(text: String, instructions: String, onRegenerate: (Strin
             Text("Couldn't draft a reply", style = style(CallFont, 18, 700, c.ink))
             Text(text, style = style(BodyFont, 15, color = c.inkMuted, lineHeight = 1.35f))
         }
-        InstructionsField(instructions, onRegenerate)
+        InstructionsField(instructions, onInstructionsChange)
         DraftKey("Regenerate", Lucide.RefreshCw, Modifier.fillMaxWidth()) {
             onRegenerate(instructions)
         }
     }
 }
 
+/**
+ * The user's extra asks for the model, what Regenerate sends. Capped client-side at
+ * [MAX_DRAFT_INSTRUCTIONS]: longer input is refused here, before any request is made.
+ */
 @Composable
-private fun InstructionsField(initialValue: String, onRegenerate: (String) -> Unit) {
+private fun InstructionsField(text: String, onTextChange: (String) -> Unit) {
     val c = AimapTheme.colors
-    var text by remember(initialValue) { mutableStateOf(initialValue) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Instructions (optional)", style = style(CallFont, 14, 600, c.ink))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Instructions (optional)", style = style(CallFont, 14, 600, c.ink))
+            Text("${text.length} / $MAX_DRAFT_INSTRUCTIONS", style = style(DataFont, 12, color = c.inkMuted))
+        }
         BasicTextField(
             value = text,
-            onValueChange = { if (it.length <= 2000) text = it },
+            onValueChange = { if (it.length <= MAX_DRAFT_INSTRUCTIONS) onTextChange(it) },
             modifier = Modifier.fillMaxWidth()
                 .heightIn(min = 80.dp)
                 .clip(Plate)

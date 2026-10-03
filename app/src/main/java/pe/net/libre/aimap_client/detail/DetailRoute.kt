@@ -56,6 +56,15 @@ fun DetailRoute(
     }
     val loadDraft: (String) -> Unit = { instructions ->
         scope.launch {
+            // The field is capped client-side; this is the backstop so an over-long instruction
+            // never reaches aimap, which would answer 400.
+            if (instructions.length > MAX_DRAFT_INSTRUCTIONS) {
+                draftState = DraftState.Failed(
+                    "Instructions are limited to $MAX_DRAFT_INSTRUCTIONS characters.",
+                    instructions,
+                )
+                return@launch
+            }
             draftState = DraftState.Loading
             draftState = if (sampled) {
                 try {
