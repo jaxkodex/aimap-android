@@ -15,7 +15,12 @@ class HomeUiTest {
         assertEquals(mapOf(Bay.NeedsYou to 2, Bay.Waiting to 3, Bay.CanGo to 28), ui.plates)
         assertEquals("sorted 14:03", ui.header.lastSort)
         assertEquals(28, ui.archiveCount)
-        assertEquals("Last 7 days · 3 inboxes · all strips shown", ui.footer)
+        assertEquals("Last 7 days · 3 inboxes · nothing hidden", ui.footer)
+    }
+
+    @Test
+    fun the_guide_reads_the_plates_in_order() {
+        assertEquals("Work down the list: handle 2, answer 3, then clear 28.", ui.guide)
     }
 
     @Test
@@ -26,6 +31,7 @@ class HomeUiTest {
         assertEquals("CHECK", check.top)
         assertFalse(check.greased)
         assertEquals("08:41", act.bottom)
+        assertFalse(act.bottomIsWord)
         assertEquals("Mentions a deadline", act.reason)
         assertEquals(2, act.moreReasons)
         assertEquals("work", act.account)
@@ -33,20 +39,28 @@ class HomeUiTest {
     }
 
     @Test
-    fun waiting_strips_show_the_age_and_grease_the_longest_wait() {
+    fun the_needs_you_key_names_the_job() {
+        assertEquals(listOf(StripKey.Handled), ui.needsYou[0].keys)
+        assertEquals(listOf(StripKey.ItWasMe), ui.needsYou[1].keys)
+    }
+
+    @Test
+    fun waiting_strips_show_the_age_over_the_word_waiting() {
         assertEquals(listOf("4d", "1d", "4h"), ui.waiting.map { it.top })
         assertEquals(listOf(true, false, false), ui.waiting.map { it.greased })
-        assertEquals(listOf("Fri", "Mon", "09:14"), ui.waiting.map { it.bottom })
-        assertTrue(ui.waiting.all { it.action == StripAction.Reply })
+        assertEquals(listOf("waiting", "waiting", "waiting"), ui.waiting.map { it.bottom })
+        assertTrue(ui.waiting.all { it.bottomIsWord })
         assertNull(ui.waiting.first().hourToday)
     }
 
     @Test
-    fun needs_review_is_cocked_and_asks_the_question() {
+    fun needs_review_is_cocked_and_offers_both_answers() {
         val tomas = ui.waiting[1]
         assertTrue(tomas.cocked)
-        assertEquals("Unsure: written to you by a person?", tomas.reason)
+        assertEquals("Unsure: does this need a reply?", tomas.reason)
         assertEquals(0, tomas.moreReasons)
+        assertEquals(listOf(StripKey.NeedsReply, StripKey.CanGo), tomas.keys)
+        assertEquals(listOf(StripKey.Reply), ui.waiting[0].keys)
     }
 
     @Test
@@ -70,10 +84,26 @@ class HomeUiTest {
     }
 
     @Test
-    fun piles_get_latest_and_under_sheets() {
-        assertEquals(listOf(2, 2, 2, 1, 1), ui.piles.map { it.underSheets })
-        assertEquals("latest 13:12", ui.piles.first().latest)
-        assertEquals(0, underSheets(1))
+    fun piles_keep_the_count_and_the_latest_time() {
+        assertEquals(listOf(9, 7, 5, 4, 3), ui.piles.map { it.count })
+        assertEquals("13:12", ui.piles.first().latest)
+        assertEquals("Morning Brew, Stratechery + 4 more", ui.piles.first().summary)
+    }
+
+    @Test
+    fun one_inbox_is_not_inboxes() {
+        assertEquals(
+            "Last 7 days · 1 inbox · nothing hidden",
+            SampleHome.home.toUi(now, accounts = 1, initials = "AR").footer,
+        )
+    }
+
+    @Test
+    fun an_empty_bay_is_all_clear() {
+        val quiet = SampleHome.clear.toUi(now, accounts = 1, initials = "AR")
+        assertEquals("All clear.", quiet.guide)
+        assertEquals(emptyList<StripUi>(), quiet.needsYou)
+        assertEquals(emptyList<PileUi>(), quiet.piles)
     }
 
     @Test

@@ -28,19 +28,41 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pe.net.libre.aimap_client.BuildConfig
+import pe.net.libre.aimap_client.detail.SampleMessage
+import pe.net.libre.aimap_client.settings.HomeLayout
 import pe.net.libre.aimap_client.ui.theme.AimapTheme
 import pe.net.libre.aimap_client.ui.theme.BodyFont
 import pe.net.libre.aimap_client.ui.theme.CallFont
 
-/** The Bay once signed in: the live home, or its first load, or why it failed. */
+/**
+ * The Bay once signed in: the live home, or its first load, or why it failed.
+ *
+ * [onOpenMessage] opens the read screen. It is handed to [HomeScreen]'s `onOpen`, which the
+ * strips call when tapped. [onAction] is the one write, the same callback for every layout: the
+ * keys on a strip, and the undo bar that follows a Handled.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeRoute(state: AppState.SignedIn, onRefresh: () -> Unit, onSignOut: () -> Unit) {
+fun HomeRoute(
+    state: AppState.SignedIn,
+    layout: HomeLayout,
+    onLayout: (HomeLayout) -> Unit,
+    onRefresh: () -> Unit,
+    onSignOut: () -> Unit,
+    onOpenMessage: (Long) -> Unit = {},
+    onAction: (Long, HomeAction) -> Unit = { _, _ -> },
+    onDismissError: () -> Unit = {},
+) {
     var account by rememberSaveable { mutableStateOf(false) }
     val home = state.home
     if (home == null || state.forbidden) {
@@ -54,18 +76,73 @@ fun HomeRoute(state: AppState.SignedIn, onRefresh: () -> Unit, onSignOut: () -> 
         )
     } else {
         PullToRefreshBox(isRefreshing = state.loading, onRefresh = onRefresh) {
-            HomeScreen(home, onAvatar = { account = true })
-            state.error?.let { ErrorBar(it, onRefresh) }
+            when (layout) {
+                HomeLayout.V4 -> HomeScreen(home, onOpen = onOpenMessage, onAction = onAction, onAvatar = { account = true })
+                HomeLayout.V5 -> HomeV5Screen(home, onOpen = onOpenMessage, onAction = onAction, onAvatar = { account = true })
+            }
+            // Both bars ride at the top: the archive dock's hold target at the foot stays clear.
+            Column(Modifier.statusBarsPadding()) {
+                when {
+                    state.error != null -> ErrorBar(state.error, "Tap to retry.", "Try again", onRefresh)
+                    state.actionError != null -> ErrorBar(state.actionError, "Tap to dismiss.", "Dismiss", onDismissError)
+                }
+                state.undo?.let { undo ->
+                    UndoBar(undo.text) { onAction(undo.messageId, HomeAction.Undo) }
+                }
+            }
         }
     }
     if (account) {
         AlertDialog(
             onDismissRequest = { account = false },
             title = { Text(state.email) },
-            text = { Text("Signed in to aimap with this Google account.") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Signed in to aimap with this Google account.")
+                    LayoutChoice(layout, onLayout)
+                    if (BuildConfig.DEBUG) {
+                        // Debug only: the read screen without the API, on the sample message.
+                        TextButton({ account = false; onOpenMessage(SampleMessage.ID) }) {
+                            Text("Open the sample message")
+                        }
+                    }
+                }
+            },
             confirmButton = { TextButton({ account = false; onSignOut() }) { Text("Sign out") } },
             dismissButton = { TextButton({ account = false }) { Text("Close") } },
         )
+    }
+}
+
+/** Which Home to draw. The choice sticks across restarts. */
+@Composable
+private fun LayoutChoice(layout: HomeLayout, onLayout: (HomeLayout) -> Unit) {
+    val c = AimapTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Home layout", style = TextStyle(fontFamily = CallFont, fontWeight = FontWeight(700), fontSize = 16.sp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            HomeLayout.entries.forEach { option ->
+                val chosen = option == layout
+                Box(
+                    Modifier.heightIn(min = 44.dp)
+                        .background(if (chosen) c.holderYellow else c.rail, RoundedCornerShape(2.dp))
+                        .clickable(role = Role.RadioButton) { onLayout(option) }
+                        .semantics { selected = chosen }
+                        .padding(horizontal = 18.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        option.label,
+                        style = TextStyle(
+                            fontFamily = CallFont,
+                            fontWeight = FontWeight(700),
+                            fontSize = 16.sp,
+                            color = if (chosen) c.ink else c.onConsole,
+                        ),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -93,15 +170,44 @@ private fun Notice(text: String, loading: Boolean, actions: List<Pair<String, ()
     }
 }
 
-/** A refresh failed but the last bay is still on screen. */
+/** A refresh or an action failed but the last bay is still on screen. */
 @Composable
-private fun ErrorBar(text: String, onRetry: () -> Unit) {
+private fun ErrorBar(text: String, note: String, label: String, onTap: () -> Unit) {
     val c = AimapTheme.colors
     Box(
-        Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 4.dp).fillMaxWidth()
-            .background(c.paper, RoundedCornerShape(2.dp)).clickable(onClickLabel = "Try again", onClick = onRetry)
+        Modifier.padding(horizontal = 20.dp, vertical = 4.dp).fillMaxWidth()
+            .background(c.paper, RoundedCornerShape(2.dp)).clickable(onClickLabel = label, onClick = onTap)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Text("$text Tap to retry.", style = TextStyle(fontFamily = BodyFont, fontSize = 14.sp, color = c.ink))
+        Text("$text $note", style = TextStyle(fontFamily = BodyFont, fontSize = 14.sp, color = c.ink))
+    }
+}
+
+/**
+ * "Handled · Undo" for about five seconds after a message leaves the Bay. The whole bar is the key,
+ * so nothing under it is tapped by mistake and the target is well over 48dp. TalkBack reads the bar
+ * as it appears, and it rides at the top, where it never sits on the archive dock's hold target.
+ */
+@Composable
+private fun UndoBar(text: String, onUndo: () -> Unit) {
+    val c = AimapTheme.colors
+    Row(
+        Modifier.padding(horizontal = 20.dp, vertical = 4.dp).fillMaxWidth().heightIn(min = 48.dp)
+            .background(c.holderYellow, RoundedCornerShape(2.dp))
+            .clickable(role = Role.Button, onClickLabel = "Undo", onClick = onUndo)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text,
+            Modifier.weight(1f),
+            style = TextStyle(fontFamily = CallFont, fontWeight = FontWeight(700), fontSize = 16.sp, color = c.ink),
+        )
+        Text(
+            "Undo",
+            style = TextStyle(fontFamily = CallFont, fontWeight = FontWeight(800), fontSize = 16.sp, color = c.ink),
+        )
     }
 }

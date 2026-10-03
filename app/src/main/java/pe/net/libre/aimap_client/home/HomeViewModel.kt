@@ -33,28 +33,79 @@ sealed interface AppState {
         val error: String? = null,
         /** The API refused this account: signing in again with another one is the fix. */
         val forbidden: Boolean = false,
+        /** The last handled message can still be put back. */
+        val undo: UndoOffer? = null,
+        /** An action failed and the Bay is back as it was. */
+        val actionError: String? = null,
+        /** Debug only: the Bay on [SampleHome], with no account and no API behind it. */
+        val sample: Boolean = false,
     ) : AppState
 }
 
 class HomeViewModel(
     private val auth: GoogleAuth = GoogleAuth(),
-    private val api: AimapApi = AimapApi(BuildConfig.API_BASE_URL, auth::idToken),
+    /** Read-only, so the screens that fetch one message share this one. */
+    val api: AimapApi = AimapApi(BuildConfig.API_BASE_URL, auth::idToken),
 ) : ViewModel() {
     private val _state = MutableStateFlow<AppState>(AppState.Starting)
     val state: StateFlow<AppState> = _state.asStateFlow()
     private var loading: Job? = null
 
+    /** What the last `GET /home` said, plus whatever the keys have done to it since. */
+    private val actions = ActionStore(
+        scope = viewModelScope,
+        write = { id, action -> if (sample) SampleHome.act(id, action) else api.act(id, action) },
+        reconcile = { refresh(quiet = true) },
+    )
+
+    /** The rest of what [HomeUi] needs, kept from the last refresh so an action can redraw the Bay. */
+    private var accounts = 0
+    private var initials = ""
+    private var sample = false
+
     init {
+        viewModelScope.launch { actions.state.collect(::draw) }
         viewModelScope.launch {
             auth.user.collect { user ->
-                if (user == null) {
+                if (user == null && !sample) {
                     loading?.cancel()
+                    actions.show(null)
                     _state.value = AppState.SignedOut()
-                } else if ((_state.value as? AppState.SignedIn)?.email != user.email) {
+                } else if (user != null && (_state.value as? AppState.SignedIn)?.email != user.email) {
+                    sample = false
                     _state.value = AppState.SignedIn(user.email.orEmpty())
                     refresh()
                 }
             }
+        }
+    }
+
+    /** Handled, Later or Undo on one message, from v4, from v5 or from the read screen. */
+    fun act(messageId: Long, action: HomeAction) = actions.act(messageId, action)
+
+    fun dismissActionError() = actions.clearError()
+
+    /**
+     * Debug only: the Bay on [SampleHome], so the keys can be tried with no account and no API.
+     * Acting on [SampleHome.REFUSED] always fails, which shows the rollback and the error bar.
+     */
+    fun openSample() {
+        if (!BuildConfig.DEBUG) return
+        sample = true
+        accounts = 3
+        initials = "AR"
+        _state.value = AppState.SignedIn(SampleHome.EMAIL, loading = false, sample = true)
+        actions.show(SampleHome.home)
+    }
+
+    /** The Bay the store holds, drawn. Every action and every refresh comes through here. */
+    private fun draw(acting: Acting) {
+        _state.update { state ->
+            (state as? AppState.SignedIn)?.copy(
+                home = acting.home?.toUi(ZonedDateTime.now(), accounts = accounts, initials = initials),
+                undo = acting.undo,
+                actionError = acting.error,
+            ) ?: state
         }
     }
 
@@ -76,19 +127,29 @@ class HomeViewModel(
     }
 
     fun signOut(context: Context) {
+        if (sample) {
+            // Nobody is signed in behind the sample Bay, so leaving it is the whole sign-out.
+            sample = false
+            actions.show(null)
+            _state.value = AppState.SignedOut()
+        }
         viewModelScope.launch { auth.signOut(context) }
     }
 
-    fun refresh() {
+    /** A [quiet] refresh leaves the pull-to-refresh spinner alone: it only reconciles an action. */
+    fun refresh(quiet: Boolean = false) {
+        if (sample) return
         val user = auth.currentUser ?: return
         loading?.cancel()
-        _state.update { (it as? AppState.SignedIn)?.copy(loading = true, error = null) ?: it }
+        if (!quiet) _state.update { (it as? AppState.SignedIn)?.copy(loading = true, error = null) ?: it }
         loading = viewModelScope.launch {
             try {
-                val accounts = async { api.accounts() }
+                val inboxes = async { api.accounts() }
                 val home = api.home()
-                val ui = home.toUi(ZonedDateTime.now(), accounts = accounts.await().size, initials = initials(user))
-                _state.update { (it as? AppState.SignedIn)?.copy(home = ui, loading = false) ?: it }
+                accounts = inboxes.await().size
+                initials = initials(user)
+                actions.show(home)
+                _state.update { (it as? AppState.SignedIn)?.copy(loading = false, error = null) ?: it }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: ApiException) {

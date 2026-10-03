@@ -8,9 +8,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 
-/** The lucide icons the home design uses (ISC licence), as 24x24 2px strokes. Tint when drawing. */
+/** The lucide icons the designs use (ISC licence), as 24x24 2px strokes. Tint when drawing. */
 object Lucide {
     val Check = lucide("check", "M20 6 9 17l-5-5")
+    val ArrowLeft = lucide("arrow-left", "m12 19-7-7 7-7", "M19 12H5")
+    val Clock = lucide("clock", "M12 6v6l4 2", "M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0")
     val Reply = lucide("reply", "M9 17 4 12l5-5", "M20 18v-2a4 4 0 0 0-4-4H4")
     val Archive = lucide(
         "archive",
@@ -18,7 +20,20 @@ object Lucide {
         "M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8",
         "M10 12h4",
     )
+    val ShieldCheck = lucide(
+        "shield-check",
+        "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
+        "m9 12 2 2 4-4",
+    )
     val ChevronDown = lucide("chevron-down", "m6 9 6 6 6-6")
+    val ChevronRight = lucide("chevron-right", "m9 18 6-6-6-6")
+    val MailOpen = lucide(
+        "mail-open",
+        "M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0z",
+        "m22 10-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 10",
+    )
+    val SkipForward = lucide("skip-forward", "M5 4 15 12 5 20z", "M19 5v14")
+    val ChevronUp = lucide("chevron-up", "m18 15-6-6-6 6")
     val Loader = lucide(
         "loader",
         "M12 2v4", "m16.2 7.8 2.9-2.9", "M18 12h4", "m16.2 16.2 2.9 2.9",

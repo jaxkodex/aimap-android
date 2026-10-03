@@ -27,6 +27,7 @@ fun parseHome(json: String): Home {
             waiting = b.getInt("waiting"),
             sorted = b.getInt("sorted"),
             unclassified = b.getInt("unclassified"),
+            handledToday = b.optInt("handled_today"),
             text = b.getString("text"),
             sortedAt = b.instant("sorted_at"),
             byHour = b.optJSONArray("by_hour").objects().map {
@@ -71,17 +72,20 @@ private fun card(o: JSONObject) = Card(
     importance = o.string("importance"),
     priority = o.optDouble("priority", 0.0),
     needsReview = o.optBoolean("needs_review"),
-    reasons = o.optJSONArray("reasons")?.let { a -> List(a.length()) { a.getString(it) } } ?: emptyList(),
+    reasons = o.optJSONArray("reasons").strings(),
     waitingSince = o.instant("waiting_since"),
+    state = MessageState.of(o.string("state")),
 )
 
-private fun JSONArray?.objects(): List<JSONObject> = if (this == null) emptyList() else List(length()) { getJSONObject(it) }
+internal fun JSONArray?.objects(): List<JSONObject> = if (this == null) emptyList() else List(length()) { getJSONObject(it) }
+
+internal fun JSONArray?.strings(): List<String> = if (this == null) emptyList() else List(length()) { getString(it) }
 
 /** A string, or null when the key is missing or JSON null (optString would say "null"). */
-private fun JSONObject.string(key: String): String? = if (isNull(key)) null else getString(key)
+internal fun JSONObject.string(key: String): String? = if (isNull(key)) null else getString(key)
 
 /** An ISO 8601 timestamp. One without an offset is taken as UTC. */
-private fun JSONObject.instant(key: String): Instant? = string(key)?.let {
+internal fun JSONObject.instant(key: String): Instant? = string(key)?.let {
     try {
         OffsetDateTime.parse(it).toInstant()
     } catch (_: DateTimeParseException) {

@@ -1,5 +1,7 @@
 package pe.net.libre.aimap_client.home
 
+import kotlinx.coroutines.delay
+import pe.net.libre.aimap_client.api.ApiException
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -9,6 +11,12 @@ import java.time.ZonedDateTime
  * none of it is real mail. Used until the app talks to `GET /home`.
  */
 object SampleHome {
+    /** Not a real address: example.invalid can never be one. */
+    const val EMAIL = "sample@example.invalid"
+
+    /** Acting on this card always fails, so the rollback and the error bar can be tried. */
+    const val REFUSED = 2L
+
     val zone: ZoneId = ZoneId.of("Europe/Madrid")
     val now: ZonedDateTime = ZonedDateTime.of(LocalDateTime.of(2026, 9, 29, 14, 7), zone)
 
@@ -63,5 +71,22 @@ object SampleHome {
             SortedGroup("Promotions", 4, 4, at(0, 10, 5), "Zara, Iberia + 1 more"),
             SortedGroup("Can discard", 3, 3, at(0, 8, 12), "LinkedIn, Glovo"),
         ),
+    )
+
+    /** The sample Bay answers its own actions, over a wire as slow as a real one. */
+    suspend fun act(messageId: Long, action: HomeAction) {
+        delay(400)
+        if (messageId == REFUSED) throw ApiException(500, "the sample won't take ${action.wire} on that one.")
+    }
+
+    /** Nothing needs you and nothing waits: the guide line and every bay at rest. */
+    val clear = Home(
+        brief = Brief(
+            new = 0, actNow = 0, waiting = 0, sorted = 0, unclassified = 0,
+            text = "Nothing new.", sortedAt = at(0, 14, 3), byHour = emptyList(),
+        ),
+        actNow = emptyList(),
+        waiting = emptyList(),
+        sorted = emptyList(),
     )
 }
