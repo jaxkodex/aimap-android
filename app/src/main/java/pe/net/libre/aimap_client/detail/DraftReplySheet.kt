@@ -70,7 +70,7 @@ sealed interface DraftState {
     data object Loading : DraftState
 
     /** The model returned a draft. */
-    data class Ready(val draft: Draft, val instructions: String) : DraftState
+    data class Ready(val draft: Draft, val instructions: String, val mailAppError: String? = null) : DraftState
 
     /** The call failed: say so, keep the instructions, and let Regenerate try again. */
     data class Failed(val text: String, val instructions: String) : DraftState
@@ -85,6 +85,7 @@ fun DraftReplySheet(
     state: DraftState,
     onClose: () -> Unit,
     onRegenerate: (String) -> Unit,
+    onMailAppError: (String?) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val c = AimapTheme.colors
@@ -112,7 +113,7 @@ fun DraftReplySheet(
         }
         when (state) {
             DraftState.Loading -> DraftSkeleton()
-            is DraftState.Ready -> DraftReady(state.draft, state.instructions, onRegenerate)
+            is DraftState.Ready -> DraftReady(state.draft, state.instructions, state.mailAppError, onRegenerate, onMailAppError)
             is DraftState.Failed -> DraftFailed(state.text, state.instructions, onRegenerate)
         }
     }
@@ -137,7 +138,13 @@ private fun DraftSkeleton() {
 }
 
 @Composable
-private fun DraftReady(draft: Draft, instructions: String, onRegenerate: (String) -> Unit) {
+private fun DraftReady(
+    draft: Draft,
+    instructions: String,
+    mailAppError: String?,
+    onRegenerate: (String) -> Unit,
+    onMailAppError: (String?) -> Unit,
+) {
     val c = AimapTheme.colors
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SelectionContainer {
@@ -150,13 +157,25 @@ private fun DraftReady(draft: Draft, instructions: String, onRegenerate: (String
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("TO: ${draft.to.joinToString(\", \")}", style = style(DataFont, 12, color = c.inkMuted))
+                val msgCount = draft.usedMessageIds.size
+                val msgWord = if (msgCount == 1) "message" else "messages"
+                Text("Read $msgCount $msgWord from this thread", style = style(DataFont, 12, color = c.inkMuted))
+                Text("TO: " + draft.to.joinToString(", "), style = style(DataFont, 12, color = c.inkMuted))
                 if (draft.cc.isNotEmpty()) {
-                    Text("CC: ${draft.cc.joinToString(\", \")}", style = style(DataFont, 12, color = c.inkMuted))
+                    Text("CC: " + draft.cc.joinToString(", "), style = style(DataFont, 12, color = c.inkMuted))
                 }
                 Text("SUBJECT: ${draft.subject}", style = style(DataFont, 12, color = c.inkMuted))
                 Box(Modifier.fillMaxWidth().heightIn(min = 1.dp).background(c.paperRule))
                 Text(draft.body, style = style(BodyFont, 16, color = c.ink, lineHeight = 1.42f))
+            }
+        }
+        if (mailAppError != null) {
+            Column(
+                Modifier.fillMaxWidth().clip(Plate).background(c.paper).padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Couldn't open mail app", style = style(CallFont, 18, 700, c.ink))
+                Text(mailAppError, style = style(BodyFont, 15, color = c.inkMuted, lineHeight = 1.35f))
             }
         }
         InstructionsField(instructions, onRegenerate)
@@ -167,7 +186,8 @@ private fun DraftReady(draft: Draft, instructions: String, onRegenerate: (String
             }
             val context = LocalContext.current
             DraftKey("Open in mail app", Lucide.Mail, Modifier.weight(1f)) {
-                openInMailApp(context, draft)
+                val error = openInMailApp(context, draft)
+                onMailAppError(error)
             }
         }
         DraftKey("Regenerate", Lucide.RefreshCw, Modifier.fillMaxWidth()) {
@@ -240,18 +260,18 @@ private fun DraftKey(
     }
 }
 
-private fun openInMailApp(context: android.content.Context, draft: Draft) {
-    val to = draft.to.joinToString(",")
-    val cc = draft.cc.joinToString(",")
-    val uri = Uri.parse("mailto:$to").buildUpon()
-        .appendQueryParameter("subject", draft.subject)
-        .appendQueryParameter("body", draft.body)
-        .apply { if (cc.isNotEmpty()) appendQueryParameter("cc", cc) }
-        .build()
-    val intent = Intent(Intent.ACTION_SENDTO, uri).apply {
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+private fun openInMailApp(context: android.content.Context, draft: Draft): String? {
+    return try {
+        val uriString = buildMailtoUri(draft)
+        val uri = Uri.parse(uriString)
+        val intent = Intent(Intent.ACTION_SENDTO, uri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+        null
+    } catch (e: Exception) {
+        "No mail app is installed, or the intent could not be handled. ${e.message.orEmpty()}".trim()
     }
-    runCatching { context.startActivity(intent) }
 }
 
 @Preview(name = "Draft ready", widthDp = 390)
@@ -262,6 +282,7 @@ private fun DraftReadyPreview() {
             DraftState.Ready(SampleMessage.draft, "Say Tuesday or Wednesday after 15:00 works."),
             onClose = {},
             onRegenerate = {},
+            onMailAppError = {},
         )
     }
 }
@@ -270,7 +291,7 @@ private fun DraftReadyPreview() {
 @Composable
 private fun DraftLoadingPreview() {
     AimapTheme(darkTheme = false) {
-        DraftReplySheet(DraftState.Loading, onClose = {}, onRegenerate = {})
+        DraftReplySheet(DraftState.Loading, onClose = {}, onRegenerate = {}, onMailAppError = {})
     }
 }
 
@@ -282,6 +303,7 @@ private fun DraftFailedPreview() {
             DraftState.Failed("Drafting is not configured.", "Say Tuesday works."),
             onClose = {},
             onRegenerate = {},
+            onMailAppError = {},
         )
     }
 }

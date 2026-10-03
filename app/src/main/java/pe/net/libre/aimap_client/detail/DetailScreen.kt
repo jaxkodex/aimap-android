@@ -42,6 +42,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
@@ -94,6 +95,7 @@ fun DetailScreen(
     onDraftReply: () -> Unit = {},
     onCloseDraft: () -> Unit = {},
     onRegenerateDraft: (String) -> Unit = {},
+    onMailAppError: (String?) -> Unit = {},
 ) {
     val c = AimapTheme.colors
     Box(modifier.fillMaxSize()) {
@@ -123,7 +125,7 @@ fun DetailScreen(
                     .clickable(enabled = false, onClick = {}),
             )
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                DraftReplySheet(draftState, onCloseDraft, onRegenerateDraft)
+                DraftReplySheet(draftState, onCloseDraft, onRegenerateDraft, onMailAppError)
             }
         }
     }

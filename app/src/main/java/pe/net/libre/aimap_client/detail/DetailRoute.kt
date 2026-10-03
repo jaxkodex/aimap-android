@@ -33,6 +33,10 @@ fun DetailRoute(
     var draftState by remember(messageId) { mutableStateOf<DraftState?>(null) }
     val sampled = BuildConfig.DEBUG && (sample || messageId == SampleMessage.ID)
 
+    val handleMailAppError: (String?) -> Unit = { error ->
+        draftState = (draftState as? DraftState.Ready)?.copy(mailAppError = error)
+    }
+
     val loadBody: () -> Unit = {
         scope.launch {
             (state as? Read.Ready)?.let { state = it.copy(body = BodyState.Loading) }
@@ -75,6 +79,7 @@ fun DetailRoute(
         onDraftReply = { loadDraft("") },
         onCloseDraft = { draftState = null },
         onRegenerateDraft = loadDraft,
+        onMailAppError = handleMailAppError,
     )
 }
 

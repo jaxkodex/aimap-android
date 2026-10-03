@@ -1,10 +1,8 @@
 package pe.net.libre.aimap_client.detail
 
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import pe.net.libre.aimap_client.api.Draft
-import java.net.URLEncoder
 import java.time.Instant
 
 /** Mailto URI construction for opening drafts in the mail app. */
@@ -50,7 +48,7 @@ class MailtoUriTest {
     fun mailto_escapes_special_characters_in_subject() {
         val draft = draft(to = listOf("test@example.com"), subject = "Re: Test & More")
         val uri = buildMailtoUri(draft)
-        assertTrue(uri.contains("subject=Re%3A+Test+%26+More"))
+        assertTrue(uri.contains("subject=Re%3A%20Test%20%26%20More"))
     }
 
     @Test
@@ -60,6 +58,14 @@ class MailtoUriTest {
         assertTrue(uri.contains("body="))
         assertTrue(uri.contains("%0A")) // newline
         assertTrue(uri.contains("%26")) // ampersand
+    }
+
+    @Test
+    fun mailto_percent_encodes_spaces_not_plus() {
+        val draft = draft(to = listOf("test@example.com"), body = "Hello world")
+        val uri = buildMailtoUri(draft)
+        assertTrue(uri.contains("Hello%20world"))
+        assertTrue(!uri.contains("Hello+world"))
     }
 
     private fun draft(
@@ -79,16 +85,4 @@ class MailtoUriTest {
         usedMessageIds = emptyList(),
         createdAt = Instant.now(),
     )
-
-    private fun buildMailtoUri(draft: Draft): String {
-        val to = draft.to.joinToString(",")
-        val params = mutableListOf<String>()
-        params.add("subject=${URLEncoder.encode(draft.subject, "UTF-8")}")
-        params.add("body=${URLEncoder.encode(draft.body, "UTF-8")}")
-        if (draft.cc.isNotEmpty()) {
-            val cc = draft.cc.joinToString(",")
-            params.add("cc=${URLEncoder.encode(cc, "UTF-8")}")
-        }
-        return "mailto:$to?${params.joinToString("&")}"
-    }
 }
