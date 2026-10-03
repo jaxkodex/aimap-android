@@ -30,6 +30,17 @@ jobs:
           fi
           echo "$GOOGLE_SERVICES_JSON" | jq . > app/google-services.json
 
+      - name: Restore debug keystore
+        env:
+          DEBUG_KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$DEBUG_KEYSTORE_B64" ]; then
+            echo "::error::Secret DEBUG_KEYSTORE_B64 is not set."
+            exit 1
+          fi
+          mkdir -p keystore
+          echo "$DEBUG_KEYSTORE_B64" | base64 -d > keystore/debug.keystore
+
       - name: Build debug APK
         env:
           AIMAP_API_BASE_URL: ${{ vars.AIMAP_API_BASE_URL }}
