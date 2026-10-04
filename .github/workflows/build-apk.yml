@@ -32,10 +32,10 @@ jobs:
 
       - name: Restore debug keystore
         env:
-          DEBUG_KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+          DEBUG_KEYSTORE_B64: ${{ vars.DEBUG_KEYSTORE_B64 }}
         run: |
           if [ -z "$DEBUG_KEYSTORE_B64" ]; then
-            echo "::error::Secret DEBUG_KEYSTORE_B64 is not set."
+            echo "::error::Variable DEBUG_KEYSTORE_B64 is not set."
             exit 1
           fi
           mkdir -p keystore
